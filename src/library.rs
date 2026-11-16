@@ -106,6 +106,12 @@ pub fn command_args(item: &Item, prepare: bool) -> Result<(String, Vec<String>),
             vec![
                 "--save-position-on-quit".into(),
                 "--force-window=yes".into(),
+                "--hwdec=auto-safe".into(),
+                "--fs".into(),
+                "--af=dynaudnorm".into(),
+                "--sub-auto=fuzzy".into(),
+                "--sid=auto".into(),
+                "--sub-visibility=yes".into(),
                 "--".into(),
                 item.path.clone(),
             ],
@@ -244,7 +250,17 @@ mod tests {
         };
         let (_, args) = command_args(&i, false).unwrap();
         assert_eq!(args.last(), Some(&i.path));
-        assert_eq!(args[2], "--");
+        assert_eq!(args[args.len() - 2], "--");
+        for flag in [
+            "--hwdec=auto-safe",
+            "--fs",
+            "--af=dynaudnorm",
+            "--sub-auto=fuzzy",
+            "--sid=auto",
+            "--sub-visibility=yes",
+        ] {
+            assert!(args.iter().any(|a| a == flag));
+        }
         fs::remove_file(p).unwrap();
     }
     #[test]
