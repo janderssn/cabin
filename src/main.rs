@@ -1,3 +1,4 @@
+mod curation;
 mod library;
 mod progress;
 mod validation;
@@ -80,6 +81,7 @@ struct Cabin {
     help: bool,
     touch_keyboard: bool,
     show_unverified: bool,
+    travel_enabled: bool,
     fullscreen_requested: bool,
     started: Instant,
     capture_requested: bool,
@@ -157,6 +159,7 @@ impl Cabin {
             children: vec![],
             help: false,
             show_unverified: false,
+            travel_enabled: curation::travel_enabled(),
             touch_keyboard: std::env::args().any(|a| a == "--keyboard"),
             fullscreen_requested: std::env::args().any(|a| a == "--windowed"),
             started: Instant::now(),
@@ -440,15 +443,7 @@ impl Cabin {
             ui.add_space(4.);
         }
     }
-    fn hero(&mut self, ui: &mut Ui) {
-        let Some(item) = self
-            .items
-            .iter()
-            .find(|i| i.id == "video-Qj_62FWfH78")
-            .cloned()
-        else {
-            return;
-        };
+    fn hero(&mut self, ui: &mut Ui, item: Item) {
         let width = ui.available_width();
         let (rect, _) = ui.allocate_exact_size(vec2(width, 262.), Sense::hover());
         ui.painter().rect_filled(rect, 16, CARD);
@@ -463,28 +458,20 @@ impl Cabin {
         );
         ui.scope_builder(UiBuilder::new().max_rect(left), |ui| {
             ui.label(
-                RichText::new("FEATURED JOURNEY  /  SPACE")
+                RichText::new(format!("FEATURED / {}", item.tag.to_uppercase()))
                     .size(16.)
                     .color(self.accent)
                     .strong(),
             );
             ui.add_space(7.);
-            ui.label(
-                RichText::new("A little further\nfrom everyday.")
-                    .size(29.)
-                    .strong(),
-            );
+            ui.label(RichText::new(&item.title).size(29.).strong());
             ui.add_space(6.);
-            ui.label(
-                RichText::new("Voyager, the outer planets, and the people who dared to go there.")
-                    .size(16.)
-                    .color(MUTED),
-            );
+            ui.label(RichText::new(&item.subtitle).size(16.).color(MUTED));
             ui.add_space(10.);
             ui.horizontal(|ui| {
                 if ui
                     .add(
-                        Button::new(RichText::new("Watch Voyager").color(BG).strong())
+                        Button::new(RichText::new(action_label(&item)).color(BG).strong())
                             .fill(self.accent),
                     )
                     .clicked()
@@ -870,7 +857,7 @@ impl eframe::App for Cabin {
                 if ui.available_width() > 650. {ui.label(RichText::new("CABIN / OFFLINE").size(20.).color(MUTED).strong());}
                 ui.with_layout(Layout::right_to_left(Align::Center),|ui|{
                     if ui.button("Keys").clicked(){self.touch_keyboard=!self.touch_keyboard;}
-                    if ui.button("Reload").on_hover_text("Reload local library").clicked(){match load(){Ok(i)=>{self.progress=progress::Progress::new(&i);self.items=i;},Err(e)=>self.notice=Some((e,true,Instant::now()))}}
+                    if ui.button("Reload").on_hover_text("Reload local library").clicked(){match load(){Ok(i)=>{self.progress=progress::Progress::new(&i);self.travel_enabled=curation::travel_enabled();self.items=i;},Err(e)=>self.notice=Some((e,true,Instant::now()))}}
                     let r=ui.add_sized([ui.available_width().min(380.),54.],TextEdit::singleline(&mut self.query).hint_text("Search your collection…").id(Id::new("search")));
                     if self.focus_search{r.request_focus();self.focus_search=false;}
                 });
@@ -892,10 +879,12 @@ impl eframe::App for Cabin {
                 if self.section=="home"&&self.query.is_empty(){
                     let continuing=self.progress.continuing(&self.items);
                     if !continuing.is_empty(){ui.heading("Continue watching");self.grid(ui,continuing);ui.add_space(22.);}
-                    if ui.available_width() > 850. {self.hero(ui);ui.add_space(21.);}
+                    let ordered=curation::home_items(&self.items,&self.progress,self.travel_enabled,self.show_unverified);
+                    if ui.available_width()>850. {if let Some(item)=ordered.first(){self.hero(ui,item.clone());ui.add_space(21.);}}
+                    let travel:Vec<_>=ordered.iter().filter(|i|self.travel_enabled && i.tag=="Travel" && !self.progress.unfinished(i)).cloned().collect();
+                    if !travel.is_empty(){ui.heading("Your Travel shelf");self.grid(ui,travel);ui.add_space(22.);}
                     ui.horizontal_wrapped(|ui|{ui.label(RichText::new("Packed for the journey").size(21.).strong());ui.with_layout(Layout::right_to_left(Align::Center),|ui|{ui.label(RichText::new(format!("{} films  ·  {} puzzles  ·  {} magazines",self.items.iter().filter(|i|i.kind=="watch").count(),self.items.iter().filter(|i|i.kind=="puzzles").count(),self.items.iter().filter(|i|i.kind=="read").count())).size(16.).color(MUTED));});});ui.add_space(9.);
-                    let ids=["puzzle-net","mag-air-space-jul-aug-2025","atari-laser-squad","video-WM8kjDF0IJU","puzzle-pattern","mag-st-review-11","video-Bd8_vO5zrjo","puzzle-bridges","atari-stunt-car-racer"];
-                    let items=ids.iter().filter_map(|id|self.items.iter().find(|i|i.id==*id).cloned()).collect();self.grid(ui,items);
+                    let items=ordered.into_iter().filter(|i|!self.progress.unfinished(i) && !(self.travel_enabled && i.tag=="Travel")).take(12).collect();self.grid(ui,items);
                 }else{
                     let mut items:Vec<Item>=self.items.iter().filter(|i|visible_game(i,self.show_unverified)&&matches(i,&self.query)&&match self.section.as_str(){"home"=>true,"travel"=>i.tag=="Travel","favorites"=>self.history.favorites.contains(&i.id),"recent"=>self.history.recent.contains(&i.id),s=>i.kind==s}).cloned().collect();
                     if self.section=="recent"{items.sort_by_key(|i|self.history.recent.iter().position(|id|id==&i.id).unwrap_or(999));}
