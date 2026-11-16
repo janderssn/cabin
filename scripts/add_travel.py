@@ -8,6 +8,9 @@ import json
 import re
 import subprocess
 import hashlib
+import sys
+from download_support import run_sources
+skipped = []
 
 home = Path.home()
 project = Path(__file__).resolve().parents[1]
@@ -20,7 +23,7 @@ if not picks.get('travel_enabled', True):
     picks['videos'] = []
     picks['magazines'] = []
 items = json.loads((root / 'library.json').read_text())
-# Keep a recovery copy; commit the new catalog only after every replacement works.
+# Keep a recovery copy; publish every successful source even if another fails.
 backup = root / 'library-before-nature-travel.json'
 if not backup.exists():
     backup.write_text(json.dumps(items, indent=2, ensure_ascii=False) + '\n')
@@ -30,10 +33,14 @@ def get(url, path):
     if path.exists():
         return
     temporary = path.with_suffix(path.suffix + '.part')
-    subprocess.run(['curl', '--fail', '--location', '--max-time', '120', '--max-filesize', '500000000', '--output', str(temporary), url], check=True)
+    try:
+        subprocess.run(['curl', '--fail', '--location', '--max-time', '120', '--max-filesize', '500000000', '--output', str(temporary), url], check=True)
+    except Exception:
+        temporary.unlink(missing_ok=True)
+        raise
     temporary.replace(path)
 
-for entry in picks['magazines'] + json.loads((project / 'data/retro-magazines.json').read_text()):
+def prepare_magazine(entry):
     slug = entry['id']
     path = mag / (slug + '.pdf')
     get(entry['url'], path)
@@ -47,7 +54,9 @@ for entry in picks['magazines'] + json.loads((project / 'data/retro-magazines.js
     byid[item['id']] = item
     print('Prepared magazine:', item['title'], pages, 'pages', flush=True)
 
-for entry in picks['videos']:
+run_sources(picks['magazines'] + json.loads((project / 'data/retro-magazines.json').read_text()), prepare_magazine, skipped)
+
+def prepare_video(entry):
     vid = entry['id']
     path = next(p for p in vroot.glob('*.mkv') if '[' + vid + ']' in p.name)
     metadata = json.loads(path.with_suffix('.info.json').read_text())
@@ -72,6 +81,8 @@ for entry in picks['videos']:
     byid[item['id']] = item
     print('Verified film:', item['title'], round(duration), 'seconds', flush=True)
 
+run_sources(picks['videos'], prepare_video, skipped)
+
 items = list(byid.values())
 temporary = root / 'library.json.tmp'
 temporary.write_text(json.dumps(items, indent=2, ensure_ascii=False) + '\n')
@@ -83,3 +94,6 @@ films = [i for i in items if i['kind'] == 'watch']
 (vroot / 'catalog.json').write_text(json.dumps([dict(title=i['title'], file=i['path'], seconds=i['seconds'], source=i['source'], bytes=i['bytes']) for i in films], indent=2))
 (vroot / 'flight-playlist.m3u').write_text('#EXTM3U\n' + '\n'.join(i['path'] for i in films) + '\n')
 print('Catalog:', len(items), 'items;', len(films), 'films;', round(sum(i['seconds'] for i in films)/60), 'minutes', flush=True)
+
+print(json.dumps({"skipped_sources": skipped, "skipped_count": len(skipped)}), flush=True)
+sys.exit(1 if skipped else 0)
