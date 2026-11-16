@@ -2,3 +2,5 @@
 /data/library.json
 /assets/library/
 /screenshots/
+
+/data/*.log
