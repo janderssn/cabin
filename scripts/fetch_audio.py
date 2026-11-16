@@ -84,7 +84,8 @@ def audiobook(entry):
         fresh = not path.exists()
         fetch(base + urllib.request.quote(track['name']), path)
         if fresh:
-            tag(path, title=f'{entry["title"]}: {number:02d} {title}', artist=entry['author'], album=entry['title'])
+            # Chapter first: card titles are cut short, and the book name is the same on every one.
+            tag(path, title=f'{title} · {entry["title"]}', artist=entry['author'], album=entry['title'])
         print('Audiobook:', entry['title'], number, 'of', len(tracks), flush=True)
 
 
