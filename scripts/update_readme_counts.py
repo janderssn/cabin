@@ -1,0 +1,5 @@
+from pathlib import Path
+import json
+root=Path(__file__).resolve().parents[1];items=json.loads((Path.home()/'.local/share/cabin/library.json').read_text());counts={k:sum(i['kind']==k for i in items) for k in ['watch','read','puzzles','atari','listen']};seconds=sum(i.get('seconds',0) for i in items if i['kind']=='watch');books=sum(i['kind']=='read' and i['path'].endswith('.html') for i in items);verified=sum(i['kind']=='atari' and i['verified'] for i in items)
+summary=f"{len(items)} catalogue entries: {counts['puzzles']} native puzzles; {counts['atari']} Atari games ({verified} boot-verified and visible by default); {counts['watch']} active documentaries ({seconds//3600}h {seconds%3600//60:02}m); {counts['read']-books} magazines; {books} illustrated books; and {counts['listen']} local audio items."
+p=root/'README.md';text=p.read_text();start=text.index('<!-- counts:start -->');end=text.index('<!-- counts:end -->',start);text=text[:start]+'<!-- counts:start -->\n'+summary+'\n'+text[end:];p.write_text(text);print(summary)

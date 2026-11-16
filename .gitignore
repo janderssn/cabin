@@ -4,3 +4,5 @@
 /screenshots/
 
 /data/*.log
+
+/scripts/__pycache__/
