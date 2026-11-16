@@ -1,0 +1,11 @@
+INFO : Hatari v2.6.1, compiled on:  Aug 23 2025, 03:45:19
+INFO : Inserted disk '~/games/atari-st/space-crusade/051.MSA' to drive A:.
+INFO : Inserted disk '~/games/atari-st/space-crusade-voyage-beyond/146.MSA' to drive B:.
+INFO : OS clock ticks / second: 100
+> screenshot ~/projects/cabin/docs/atari-boots/space-crusade-voyage-beyond-boot.png
+Screen dump to '~/projects/cabin/docs/atari-boots/space-crusade-voyage-beyond-boot.png' succeeded
+command FIFO read error: Resource temporarily unavailable
+> screenshot ~/projects/cabin/docs/atari-boots/space-crusade-voyage-beyond-game.png
+Screen dump to '~/projects/cabin/docs/atari-boots/space-crusade-voyage-beyond-game.png' succeeded
+INFO : Floppy A: has been removed from drive.
+INFO : Floppy B: has been removed from drive.

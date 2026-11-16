@@ -1,0 +1,11 @@
+INFO : Hatari v2.6.1, compiled on:  Aug 23 2025, 03:45:19
+INFO : Inserted disk '~/games/atari-st/midwinter-ii/008A.MSA' to drive A:.
+INFO : Inserted disk '~/games/atari-st/midwinter-ii/008B.MSA' to drive B:.
+INFO : OS clock ticks / second: 100
+> screenshot ~/projects/cabin/docs/atari-boots/midwinter-ii-boot.png
+Screen dump to '~/projects/cabin/docs/atari-boots/midwinter-ii-boot.png' succeeded
+command FIFO read error: Resource temporarily unavailable
+> screenshot ~/projects/cabin/docs/atari-boots/midwinter-ii-game.png
+Screen dump to '~/projects/cabin/docs/atari-boots/midwinter-ii-game.png' succeeded
+INFO : Floppy A: has been removed from drive.
+INFO : Floppy B: has been removed from drive.

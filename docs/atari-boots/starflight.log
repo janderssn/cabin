@@ -1,0 +1,10 @@
+INFO : Hatari v2.6.1, compiled on:  Aug 23 2025, 03:45:19
+INFO : Inserted disk '~/games/atari-st/starflight/A_271.MSA' to drive A:.
+INFO : OS clock ticks / second: 100
+> screenshot ~/projects/cabin/docs/atari-boots/starflight-boot.png
+Screen dump to '~/projects/cabin/docs/atari-boots/starflight-boot.png' succeeded
+command FIFO read error: Resource temporarily unavailable
+WARN : Address Error writing at address $707, PC=$fd4316 addr_e3=fd4316 op_e3=3893
+> screenshot ~/projects/cabin/docs/atari-boots/starflight-game.png
+Screen dump to '~/projects/cabin/docs/atari-boots/starflight-game.png' succeeded
+INFO : Floppy A: has been removed from drive.

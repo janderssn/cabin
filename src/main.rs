@@ -76,6 +76,7 @@ struct Cabin {
     children: Vec<(String, Child)>,
     help: bool,
     touch_keyboard: bool,
+    show_unverified: bool,
     fullscreen_requested: bool,
     started: Instant,
     capture_requested: bool,
@@ -151,6 +152,7 @@ impl Cabin {
             notice,
             children: vec![],
             help: false,
+            show_unverified: false,
             touch_keyboard: std::env::args().any(|a| a == "--keyboard"),
             fullscreen_requested: std::env::args().any(|a| a == "--windowed"),
             started: Instant::now(),
@@ -378,6 +380,10 @@ impl Cabin {
         }
     }
     fn grid(&mut self, ui: &mut Ui, items: Vec<Item>) {
+        let items: Vec<_> = items
+            .into_iter()
+            .filter(|i| visible_game(i, self.show_unverified))
+            .collect();
         if items.is_empty() {
             ui.add_space(70.);
             ui.vertical_centered(|ui| {
@@ -837,6 +843,7 @@ impl eframe::App for Cabin {
             if let Some((text,error,_))=&self.notice{let t=text.clone();let error=*error;Frame::new().fill(if error{Color32::from_rgb(68,37,36)}else{Color32::from_rgb(26,53,48)}).corner_radius(8).inner_margin(10).show(ui,|ui|{ui.horizontal_wrapped(|ui|{ui.label(&t);if ui.small_button("Dismiss").clicked(){self.notice=None;}});});ui.add_space(10.);}
             ScrollArea::vertical().id_salt(("content",self.section.clone(),self.detail.clone())).auto_shrink([false,false]).show(ui,|ui|{
                 if let Some(item)=self.items.iter().find(|i|Some(&i.id)==self.detail.as_ref()).cloned(){self.detail_page(ui,item);return;}
+                if self.section=="atari" {ui.checkbox(&mut self.show_unverified,"Show unverified games");ui.label(RichText::new("Verified means a game screen was reached; it is not a complete playthrough.").size(16.).color(MUTED));ui.add_space(12.);}
                 let (title,sub)=match self.section.as_str(){
                     "watch"=>("A window into another world.","Space, history, and the stories behind extraordinary events."),
                     "puzzles"=>("Just one more puzzle.","Forty little challenges. No accounts, no timers, no connection needed."),
@@ -853,7 +860,7 @@ impl eframe::App for Cabin {
                     let ids=["puzzle-net","mag-air-space-jul-aug-2025","atari-laser-squad","video-WM8kjDF0IJU","puzzle-pattern","mag-st-review-11","video-Bd8_vO5zrjo","puzzle-bridges","atari-stunt-car-racer"];
                     let items=ids.iter().filter_map(|id|self.items.iter().find(|i|i.id==*id).cloned()).collect();self.grid(ui,items);
                 }else{
-                    let mut items:Vec<Item>=self.items.iter().filter(|i|matches(i,&self.query)&&match self.section.as_str(){"home"=>true,"travel"=>i.tag=="Travel","favorites"=>self.history.favorites.contains(&i.id),"recent"=>self.history.recent.contains(&i.id),s=>i.kind==s}).cloned().collect();
+                    let mut items:Vec<Item>=self.items.iter().filter(|i|visible_game(i,self.show_unverified)&&matches(i,&self.query)&&match self.section.as_str(){"home"=>true,"travel"=>i.tag=="Travel","favorites"=>self.history.favorites.contains(&i.id),"recent"=>self.history.recent.contains(&i.id),s=>i.kind==s}).cloned().collect();
                     if self.section=="recent"{items.sort_by_key(|i|self.history.recent.iter().position(|id|id==&i.id).unwrap_or(999));}
                     ui.label(RichText::new(format!("{} items · stored on this laptop",items.len())).color(MUTED).size(16.));ui.add_space(8.);self.grid(ui,items);
                 }

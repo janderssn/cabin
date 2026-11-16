@@ -1,0 +1,73 @@
+{
+  "armour-geddon": [
+    "0x02"
+  ],
+  "atomino": [
+    "0x3c",
+    "0x39"
+  ],
+  "conflict": [
+    "0x03"
+  ],
+  "hunter": [
+    "0x02",
+    "0x39",
+    "0x39"
+  ],
+  "klax": [
+    "0x06"
+  ],
+  "laser-squad": [
+    "0x02"
+  ],
+  "lemmings": [
+    "0x02",
+    "0x39",
+    "0x39"
+  ],
+  "loopz": [
+    "0x03",
+    "0x39"
+  ],
+  "midwinter": [
+    "0x39",
+    "0x02"
+  ],
+  "midwinter-ii": [
+    "0x39",
+    "0x39",
+    "0x39"
+  ],
+  "puzznic": [
+    "0x03"
+  ],
+  "sabre-team": [
+    "0x3c",
+    "0x39"
+  ],
+  "space-crusade": [
+    "0x02",
+    "0x39",
+    "0x39"
+  ],
+  "space-crusade-voyage-beyond": [
+    "0x02",
+    "0x39",
+    "0x39"
+  ],
+  "starflight": [
+    "0x02"
+  ],
+  "super-cars-ii": [
+    "0x39",
+    "0x03"
+  ],
+  "tetris": [
+    "0x07",
+    "0x39"
+  ],
+  "supremacy": [
+    "0x02",
+    "0x39"
+  ]
+}

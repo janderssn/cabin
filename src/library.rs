@@ -265,3 +265,25 @@ mod tests {
         assert!(command_args(&i, false).is_err());
     }
 }
+
+pub fn visible_game(item: &Item, show_unverified: bool) -> bool {
+    item.kind != "atari" || item.verified || show_unverified
+}
+#[cfg(test)]
+mod compatibility_tests {
+    use super::*;
+    #[test]
+    fn unverified_atari_requires_opt_in() {
+        let mut item = Item {
+            kind: "atari".into(),
+            ..Default::default()
+        };
+        assert!(!visible_game(&item, false));
+        assert!(visible_game(&item, true));
+        item.verified = true;
+        assert!(visible_game(&item, false));
+        item.kind = "watch".into();
+        item.verified = false;
+        assert!(visible_game(&item, false));
+    }
+}

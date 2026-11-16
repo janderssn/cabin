@@ -1,0 +1,42 @@
+INFO : Hatari v2.6.1, compiled on:  Aug 23 2025, 03:45:19
+INFO : Inserted disk '~/games/atari-st/klax/med_072.st' to drive A:.
+INFO : OS clock ticks / second: 100
+> screenshot ~/projects/cabin/docs/atari-boots/klax-boot.png
+Screen dump to '~/projects/cabin/docs/atari-boots/klax-boot.png' succeeded
+WARN : Address Error reading at address $d7cb, PC=$43a addr_e3=43a op_e3=d190
+WARN : Bus Error writing at address $fc5904, PC=$61002294 addr_e3=61002294 op_e3=22704
+WARN : Bus Error writing at address $fc5904, PC=$61002294 addr_e3=61002294 op_e3=22700
+8 repeats of: WARN : Bus Error writing at address $fc5904, PC=$61002294 addr_e3=61002294 op_e3=22700
+16 repeats of: WARN : Bus Error writing at address $fc5904, PC=$61002294 addr_e3=61002294 op_e3=22700
+32 repeats of: WARN : Bus Error writing at address $fc5904, PC=$61002294 addr_e3=61002294 op_e3=22700
+64 repeats of: WARN : Bus Error writing at address $fc5904, PC=$61002294 addr_e3=61002294 op_e3=22700
+128 repeats of: WARN : Bus Error writing at address $fc5904, PC=$61002294 addr_e3=61002294 op_e3=22700
+256 repeats of: WARN : Bus Error writing at address $fc5904, PC=$61002294 addr_e3=61002294 op_e3=22700
+512 repeats of: WARN : Bus Error writing at address $fc5904, PC=$61002294 addr_e3=61002294 op_e3=22700
+1024 repeats of: WARN : Bus Error writing at address $fc5904, PC=$61002294 addr_e3=61002294 op_e3=22700
+2048 repeats of: WARN : Bus Error writing at address $fc5904, PC=$61002294 addr_e3=61002294 op_e3=22700
+4096 repeats of: WARN : Bus Error writing at address $fc5904, PC=$61002294 addr_e3=61002294 op_e3=22700
+8192 repeats of: WARN : Bus Error writing at address $fc5904, PC=$61002294 addr_e3=61002294 op_e3=22700
+16384 repeats of: WARN : Bus Error writing at address $fc5904, PC=$61002294 addr_e3=61002294 op_e3=22700
+32768 repeats of: WARN : Bus Error writing at address $fc5904, PC=$61002294 addr_e3=61002294 op_e3=22700
+65536 repeats of: WARN : Bus Error writing at address $fc5904, PC=$61002294 addr_e3=61002294 op_e3=22700
+131072 repeats of: WARN : Bus Error writing at address $fc5904, PC=$61002294 addr_e3=61002294 op_e3=22700
+262144 repeats of: WARN : Bus Error writing at address $fc5904, PC=$61002294 addr_e3=61002294 op_e3=22700
+60913 repeats of: WARN : Bus Error writing at address $fc5904, PC=$61002294 addr_e3=61002294 op_e3=22700
+> screenshot ~/projects/cabin/docs/atari-boots/klax-game.png
+Screen dump to '~/projects/cabin/docs/atari-boots/klax-game.png' succeeded
+WARN : Bus Error writing at address $fc5904, PC=$61002294 addr_e3=61002294 op_e3=22700
+8 repeats of: WARN : Bus Error writing at address $fc5904, PC=$61002294 addr_e3=61002294 op_e3=22700
+16 repeats of: WARN : Bus Error writing at address $fc5904, PC=$61002294 addr_e3=61002294 op_e3=22700
+32 repeats of: WARN : Bus Error writing at address $fc5904, PC=$61002294 addr_e3=61002294 op_e3=22700
+64 repeats of: WARN : Bus Error writing at address $fc5904, PC=$61002294 addr_e3=61002294 op_e3=22700
+128 repeats of: WARN : Bus Error writing at address $fc5904, PC=$61002294 addr_e3=61002294 op_e3=22700
+256 repeats of: WARN : Bus Error writing at address $fc5904, PC=$61002294 addr_e3=61002294 op_e3=22700
+512 repeats of: WARN : Bus Error writing at address $fc5904, PC=$61002294 addr_e3=61002294 op_e3=22700
+1024 repeats of: WARN : Bus Error writing at address $fc5904, PC=$61002294 addr_e3=61002294 op_e3=22700
+2048 repeats of: WARN : Bus Error writing at address $fc5904, PC=$61002294 addr_e3=61002294 op_e3=22700
+4096 repeats of: WARN : Bus Error writing at address $fc5904, PC=$61002294 addr_e3=61002294 op_e3=22700
+8192 repeats of: WARN : Bus Error writing at address $fc5904, PC=$61002294 addr_e3=61002294 op_e3=22700
+16384 repeats of: WARN : Bus Error writing at address $fc5904, PC=$61002294 addr_e3=61002294 op_e3=22700
+9599 repeats of: WARN : Bus Error writing at address $fc5904, PC=$61002294 addr_e3=61002294 op_e3=22700
+INFO : Floppy A: has been removed from drive.

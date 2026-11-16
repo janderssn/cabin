@@ -1,0 +1,9 @@
+INFO : Hatari v2.6.1, compiled on:  Aug 23 2025, 03:45:19
+INFO : Inserted disk '~/games/atari-st/lemmings/033.MSA' to drive A:.
+INFO : OS clock ticks / second: 100
+> screenshot ~/projects/cabin/docs/atari-boots/lemmings-boot.png
+Screen dump to '~/projects/cabin/docs/atari-boots/lemmings-boot.png' succeeded
+command FIFO read error: Resource temporarily unavailable
+> screenshot ~/projects/cabin/docs/atari-boots/lemmings-game.png
+Screen dump to '~/projects/cabin/docs/atari-boots/lemmings-game.png' succeeded
+INFO : Floppy A: has been removed from drive.

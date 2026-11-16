@@ -1,0 +1,8 @@
+INFO : Hatari v2.6.1, compiled on:  Aug 23 2025, 03:45:19
+INFO : Inserted disk '~/games/atari-st/sabre-team/125.MSA' to drive A:.
+INFO : OS clock ticks / second: 100
+> screenshot ~/projects/cabin/docs/atari-boots/sabre-team-boot.png
+Screen dump to '~/projects/cabin/docs/atari-boots/sabre-team-boot.png' succeeded
+> screenshot ~/projects/cabin/docs/atari-boots/sabre-team-game.png
+Screen dump to '~/projects/cabin/docs/atari-boots/sabre-team-game.png' succeeded
+INFO : Floppy A: has been removed from drive.

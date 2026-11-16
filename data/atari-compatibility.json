@@ -1,0 +1,184 @@
+{
+  "armour-geddon": {
+    "verified": true,
+    "notes": "Boot audit 2026-11-16: Press 1. Reached the 3D flight demonstration. Tested headlessly with 1 MB RAM and write-protected disks. Boot verification only; not a full playthrough.",
+    "rom": "~/games/atari-st/roms/emutos-192k-1.4/etos192uk.img",
+    "tested_rom": "~/games/atari-st/roms/emutos-192k-1.4/etos192uk.img",
+    "evidence": "docs/atari-boots/armour-geddon-game.png"
+  },
+  "atomino": {
+    "verified": false,
+    "notes": "Boot audit 2026-11-16: Automation 429 remains on compilation artwork after F2 and Space; game startup not confirmed. Tested headlessly with 1 MB RAM and write-protected disks. Boot verification only; not a full playthrough.",
+    "rom": "~/games/atari-st/roms/emutos-192k-1.4/etos192uk.img",
+    "tested_rom": "~/games/atari-st/roms/emutos-192k-1.4/etos192uk.img",
+    "evidence": "docs/atari-boots/atomino-game.png"
+  },
+  "battletech": {
+    "verified": false,
+    "notes": "Boot audit 2026-11-16: Boot loader produces an illegal-instruction panic in EmuTOS. Tested headlessly with 1 MB RAM and write-protected disks. Boot verification only; not a full playthrough.",
+    "rom": "~/.local/share/laser-squad-st/emutos.img",
+    "tested_rom": "~/games/atari-st/roms/emutos-192k-1.4/etos192uk.img",
+    "evidence": "docs/atari-boots/battletech-boot.png"
+  },
+  "breach-ii": {
+    "verified": false,
+    "notes": "Boot audit 2026-11-16: Boot loader produces an illegal-instruction panic in EmuTOS. Tested headlessly with 1 MB RAM and write-protected disks. Boot verification only; not a full playthrough.",
+    "rom": "~/.local/share/laser-squad-st/emutos.img",
+    "tested_rom": "~/games/atari-st/roms/emutos-192k-1.4/etos192uk.img",
+    "evidence": "docs/atari-boots/breach-ii-boot.png"
+  },
+  "conflict": {
+    "verified": true,
+    "notes": "Boot audit 2026-11-16: Press 2. Reached Conflict title / new-game menu. Tested headlessly with 1 MB RAM and write-protected disks. Boot verification only; not a full playthrough.",
+    "rom": "~/games/atari-st/roms/emutos-192k-1.4/etos192uk.img",
+    "tested_rom": "~/games/atari-st/roms/emutos-192k-1.4/etos192uk.img",
+    "evidence": "docs/atari-boots/conflict-game.png"
+  },
+  "dogs-of-war": {
+    "verified": false,
+    "notes": "Boot audit 2026-11-16: Boot loader produces a bus-error panic in EmuTOS. Tested headlessly with 1 MB RAM and write-protected disks. Boot verification only; not a full playthrough.",
+    "rom": "~/.local/share/laser-squad-st/emutos.img",
+    "tested_rom": "~/games/atari-st/roms/emutos-192k-1.4/etos192uk.img",
+    "evidence": "docs/atari-boots/dogs-of-war-boot.png"
+  },
+  "dungeon-master": {
+    "verified": false,
+    "notes": "Boot audit 2026-11-16: Boot loader produces an illegal-instruction panic in EmuTOS. Tested headlessly with 1 MB RAM and write-protected disks. Boot verification only; not a full playthrough.",
+    "rom": "~/.local/share/laser-squad-st/emutos.img",
+    "tested_rom": "~/games/atari-st/roms/emutos-192k-1.4/etos192uk.img",
+    "evidence": "docs/atari-boots/dungeon-master-boot.png"
+  },
+  "hunter": {
+    "verified": true,
+    "notes": "Boot audit 2026-11-16: Press 1, then Space twice. Reached the in-game 3D view. Tested headlessly with 1 MB RAM and write-protected disks. Boot verification only; not a full playthrough.",
+    "rom": "~/games/atari-st/roms/emutos-192k-1.4/etos192uk.img",
+    "tested_rom": "~/games/atari-st/roms/emutos-192k-1.4/etos192uk.img",
+    "evidence": "docs/atari-boots/hunter-game.png"
+  },
+  "klax": {
+    "verified": false,
+    "notes": "Boot audit 2026-11-16: Pressing 5 leaves a black screen; no identifiable game screen reached. Tested headlessly with 1 MB RAM and write-protected disks. Boot verification only; not a full playthrough.",
+    "rom": "~/games/atari-st/roms/emutos-192k-1.4/etos192uk.img",
+    "tested_rom": "~/games/atari-st/roms/emutos-192k-1.4/etos192uk.img",
+    "evidence": "docs/atari-boots/klax-game.png"
+  },
+  "laser-squad": {
+    "verified": true,
+    "notes": "Boot audit 2026-11-16: Press 1. Reached player-selection screen; existing arrow mapping retained. Tested headlessly with 1 MB RAM and write-protected disks. Boot verification only; not a full playthrough.",
+    "rom": "~/.local/share/laser-squad-st/emutos.img",
+    "tested_rom": "~/.local/share/laser-squad-st/emutos.img",
+    "evidence": "docs/atari-boots/laser-squad-game.png"
+  },
+  "lemmings": {
+    "verified": true,
+    "notes": "Boot audit 2026-11-16: Press 1, then Space twice. Reached the Lemmings main menu. Tested headlessly with 1 MB RAM and write-protected disks. Boot verification only; not a full playthrough.",
+    "rom": "~/games/atari-st/roms/emutos-192k-1.4/etos192uk.img",
+    "tested_rom": "~/games/atari-st/roms/emutos-192k-1.4/etos192uk.img",
+    "evidence": "docs/atari-boots/lemmings-game.png"
+  },
+  "loopz": {
+    "verified": true,
+    "notes": "Boot audit 2026-11-16: Press 2, then Space. Reached LOOPZ HAS LOADED screen. Tested headlessly with 1 MB RAM and write-protected disks. Boot verification only; not a full playthrough.",
+    "rom": "~/games/atari-st/roms/emutos-192k-1.4/etos192uk.img",
+    "tested_rom": "~/games/atari-st/roms/emutos-192k-1.4/etos192uk.img",
+    "evidence": "docs/atari-boots/loopz-game.png"
+  },
+  "lords-of-chaos": {
+    "verified": false,
+    "notes": "Boot audit 2026-11-16: Boot loader produces a bus-error panic in EmuTOS. Tested headlessly with 1 MB RAM and write-protected disks. Boot verification only; not a full playthrough.",
+    "rom": "~/.local/share/laser-squad-st/emutos.img",
+    "tested_rom": "~/games/atari-st/roms/emutos-192k-1.4/etos192uk.img",
+    "evidence": "docs/atari-boots/lords-of-chaos-boot.png"
+  },
+  "midwinter": {
+    "verified": true,
+    "notes": "Boot audit 2026-11-16: Space, then 1. Reached the Midwinter title screen. Tested headlessly with 1 MB RAM and write-protected disks. Boot verification only; not a full playthrough.",
+    "rom": "~/games/atari-st/roms/emutos-192k-1.4/etos192uk.img",
+    "tested_rom": "~/games/atari-st/roms/emutos-192k-1.4/etos192uk.img",
+    "evidence": "docs/atari-boots/midwinter-game.png"
+  },
+  "midwinter-ii": {
+    "verified": true,
+    "notes": "Boot audit 2026-11-16: Space through the loader. Reached the mouse/joystick/keyboard selection screen. Tested headlessly with 1 MB RAM and write-protected disks. Boot verification only; not a full playthrough.",
+    "rom": "~/games/atari-st/roms/emutos-192k-1.4/etos192uk.img",
+    "tested_rom": "~/games/atari-st/roms/emutos-192k-1.4/etos192uk.img",
+    "evidence": "docs/atari-boots/midwinter-ii-game.png"
+  },
+  "phantasie-iii": {
+    "verified": false,
+    "notes": "Boot audit 2026-11-16: Boot loader produces a bus-error panic in EmuTOS. Tested headlessly with 1 MB RAM and write-protected disks. Boot verification only; not a full playthrough.",
+    "rom": "~/.local/share/laser-squad-st/emutos.img",
+    "tested_rom": "~/games/atari-st/roms/emutos-192k-1.4/etos192uk.img",
+    "evidence": "docs/atari-boots/phantasie-iii-boot.png"
+  },
+  "puzznic": {
+    "verified": true,
+    "notes": "Boot audit 2026-11-16: Press 2. Reached the animated game demonstration. Tested headlessly with 1 MB RAM and write-protected disks. Boot verification only; not a full playthrough.",
+    "rom": "~/games/atari-st/roms/emutos-192k-1.4/etos192uk.img",
+    "tested_rom": "~/games/atari-st/roms/emutos-192k-1.4/etos192uk.img",
+    "evidence": "docs/atari-boots/puzznic-game.png"
+  },
+  "sabre-team": {
+    "verified": true,
+    "notes": "Boot audit 2026-11-16: F2 (or Tab with the installed mapping), then Space. Reached Sabre Team title. Tested headlessly with 1 MB RAM and write-protected disks. Boot verification only; not a full playthrough.",
+    "rom": "~/games/atari-st/roms/emutos-192k-1.4/etos192uk.img",
+    "tested_rom": "~/games/atari-st/roms/emutos-192k-1.4/etos192uk.img",
+    "evidence": "docs/atari-boots/sabre-team-game.png"
+  },
+  "space-crusade": {
+    "verified": true,
+    "notes": "Boot audit 2026-11-16: Press 1, then Space twice. Reached game language selection (F1 for English). Tested headlessly with 1 MB RAM and write-protected disks. Boot verification only; not a full playthrough.",
+    "rom": "~/games/atari-st/roms/emutos-192k-1.4/etos192uk.img",
+    "tested_rom": "~/games/atari-st/roms/emutos-192k-1.4/etos192uk.img",
+    "evidence": "docs/atari-boots/space-crusade-game.png"
+  },
+  "space-crusade-voyage-beyond": {
+    "verified": false,
+    "notes": "Boot audit 2026-11-16: Base game reaches language selection with the expansion in drive B; the expansion mission itself has not been verified. Tested headlessly with 1 MB RAM and write-protected disks. Boot verification only; not a full playthrough.",
+    "rom": "~/.local/share/laser-squad-st/emutos.img",
+    "tested_rom": "~/games/atari-st/roms/emutos-192k-1.4/etos192uk.img",
+    "evidence": "docs/atari-boots/space-crusade-voyage-beyond-game.png"
+  },
+  "starflight": {
+    "verified": false,
+    "notes": "Boot audit 2026-11-16: Compilation menu boots; selecting 1 produces an address-error panic with the 192K ROM. Existing launch ROM retained. Tested headlessly with 1 MB RAM and write-protected disks. Boot verification only; not a full playthrough.",
+    "rom": "~/.local/share/laser-squad-st/emutos.img",
+    "tested_rom": "~/games/atari-st/roms/emutos-192k-1.4/etos192uk.img",
+    "evidence": "docs/atari-boots/starflight-game.png"
+  },
+  "stunt-car-racer": {
+    "verified": false,
+    "notes": "Boot audit 2026-11-16: Loader displays \u201cA VIRUS IS LURKING IN MEMORY\u201d; startup stops. This is the loader\u2019s compatibility warning, not an antivirus scan result. Tested headlessly with 1 MB RAM and write-protected disks. Boot verification only; not a full playthrough.",
+    "rom": "~/.local/share/laser-squad-st/emutos.img",
+    "tested_rom": "~/games/atari-st/roms/emutos-192k-1.4/etos192uk.img",
+    "evidence": "docs/atari-boots/stunt-car-racer-boot.png"
+  },
+  "sundog": {
+    "verified": false,
+    "notes": "Boot audit 2026-11-16: Boot produces a Line-F emulator panic / corrupt title display. Tested headlessly with 1 MB RAM and write-protected disks. Boot verification only; not a full playthrough.",
+    "rom": "~/.local/share/laser-squad-st/emutos.img",
+    "tested_rom": "~/games/atari-st/roms/emutos-192k-1.4/etos192uk.img",
+    "evidence": "docs/atari-boots/sundog-boot.png"
+  },
+  "super-cars-ii": {
+    "verified": true,
+    "notes": "Boot audit 2026-11-16: Space, then 2. Reached the Super Cars II introduction. Entry 1 launches Moonshine Racers, not this game. Tested headlessly with 1 MB RAM and write-protected disks. Boot verification only; not a full playthrough.",
+    "rom": "~/games/atari-st/roms/emutos-192k-1.4/etos192uk.img",
+    "tested_rom": "~/games/atari-st/roms/emutos-192k-1.4/etos192uk.img",
+    "evidence": "docs/atari-boots/super-cars-ii-game.png"
+  },
+  "supremacy": {
+    "verified": false,
+    "notes": "Boot audit 2026-11-16: Compilation boots, but tested entry 1 reaches a Justice Central terminal rather than an identifiable Supremacy screen. Correct selection remains unverified. Tested headlessly with 1 MB RAM and write-protected disks. Boot verification only; not a full playthrough.",
+    "rom": "~/.local/share/laser-squad-st/emutos.img",
+    "tested_rom": "~/games/atari-st/roms/emutos-192k-1.4/etos192uk.img",
+    "evidence": "docs/atari-boots/supremacy-game.png"
+  },
+  "tetris": {
+    "verified": true,
+    "notes": "Boot audit 2026-11-16: Press 6, then Space. Reached Tetris Hall of Fame / start screen. Tested headlessly with 1 MB RAM and write-protected disks. Boot verification only; not a full playthrough.",
+    "rom": "~/games/atari-st/roms/emutos-192k-1.4/etos192uk.img",
+    "tested_rom": "~/games/atari-st/roms/emutos-192k-1.4/etos192uk.img",
+    "evidence": "docs/atari-boots/tetris-game.png"
+  }
+}

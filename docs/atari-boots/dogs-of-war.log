@@ -1,0 +1,7 @@
+INFO : Hatari v2.6.1, compiled on:  Aug 23 2025, 03:45:19
+INFO : Inserted disk '~/games/atari-st/dogs-of-war/A_220.MSA' to drive A:.
+INFO : OS clock ticks / second: 100
+WARN : Bus Error writing at address $fc8107, PC=$16ac addr_e3=16ac op_e3=19a3
+> screenshot ~/projects/cabin/docs/atari-boots/dogs-of-war-boot.png
+Screen dump to '~/projects/cabin/docs/atari-boots/dogs-of-war-boot.png' succeeded
+INFO : Floppy A: has been removed from drive.
