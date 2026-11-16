@@ -39,6 +39,8 @@ pub struct History {
     pub plan: Vec<u32>,
     /// "flight" or "stop" for each entry of `plan`; missing entries are flights.
     pub plan_kinds: Vec<String>,
+    /// Last page read in each magazine, counted from 0.
+    pub pages: std::collections::BTreeMap<String, u32>,
 }
 
 pub fn home() -> PathBuf {

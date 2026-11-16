@@ -1,0 +1,19 @@
+{
+  "booking": "ABC123",
+  "flights": [
+    {
+      "number": "XY101", "operator": "Example Air", "aircraft": "Airbus A320",
+      "from_code": "ACE", "from_city": "Lanzarote", "from_terminal": "Terminal 1",
+      "to_code": "FRA", "to_city": "Frankfurt", "to_terminal": "Terminal 1",
+      "departs": "2026-01-10T14:25:00+00:00", "arrives": "2026-01-10T19:45:00+01:00",
+      "class": "Economy", "seat": "14A"
+    },
+    {
+      "number": "XY202", "operator": "Example Air", "aircraft": "Airbus A321",
+      "from_code": "FRA", "from_city": "Frankfurt", "from_terminal": "Terminal 1",
+      "to_code": "ARN", "to_city": "Stockholm", "to_terminal": "Terminal 5",
+      "departs": "2026-01-10T21:50:00+01:00", "arrives": "2026-01-10T23:55:00+01:00",
+      "class": "Economy"
+    }
+  ]
+}

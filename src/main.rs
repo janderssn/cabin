@@ -4,6 +4,8 @@ mod library;
 mod navigation;
 mod planner;
 mod progress;
+mod reader;
+mod trip;
 mod validation;
 use eframe::egui::*;
 use library::*;
@@ -107,6 +109,12 @@ struct Cabin {
     scripted_done: usize,
     /// Which flight's line-up holds the focus in the planner.
     focused_leg: usize,
+    /// The magazine open in the built-in reader, with its page pictures.
+    reader: Option<reader::Reader>,
+    /// Item to open as soon as the window is up (`--read ITEM_ID`).
+    open_on_start: Option<String>,
+    ctx: Context,
+    reader_pages: HashMap<u32, TextureHandle>,
     frames: u32,
     theme_check: Instant,
 }
@@ -117,6 +125,7 @@ impl Cabin {
         detail: Option<String>,
         screenshot: Option<PathBuf>,
         scripted_moves: Vec<navigation::Direction>,
+        open_on_start: Option<String>,
     ) -> Self {
         let mut visuals = Visuals::dark();
         visuals.panel_fill = BG;
@@ -203,6 +212,10 @@ impl Cabin {
             scripted_moves,
             scripted_done: 0,
             focused_leg: 0,
+            reader: None,
+            open_on_start,
+            ctx: cc.egui_ctx.clone(),
+            reader_pages: HashMap::new(),
             frames: 0,
             theme_check: Instant::now(),
         }
@@ -278,7 +291,178 @@ impl Cabin {
         }
         self.save();
     }
+    fn close_reader(&mut self) {
+        if let Some(r) = self.reader.take() {
+            self.history.pages.insert(r.id, r.page);
+            self.save();
+        }
+        self.reader_pages.clear();
+    }
+    /// Keys and buttons for the reader. Returns true while a magazine is open.
+    fn reader_input(&mut self, ctx: &Context) -> bool {
+        let Some(r) = self.reader.as_mut() else {
+            return false;
+        };
+        let pressed = |key: Key| ctx.input_mut(|i| i.consume_key(Modifiers::NONE, key));
+        if pressed(Key::ArrowRight) || pressed(Key::PageDown) || pressed(Key::Space) {
+            r.go(1);
+        }
+        if pressed(Key::ArrowLeft) || pressed(Key::PageUp) {
+            r.go(-1);
+        }
+        if pressed(Key::Home) {
+            r.go(-100000);
+        }
+        if pressed(Key::End) {
+            r.go(100000);
+        }
+        if pressed(Key::ArrowDown) {
+            self.controller_scroll = -260.;
+        }
+        if pressed(Key::ArrowUp) {
+            self.controller_scroll = 260.;
+        }
+        if pressed(Key::Plus) || pressed(Key::Equals) {
+            r.zoom = (r.zoom + 1).min(3);
+        }
+        if pressed(Key::Minus) {
+            r.zoom = r.zoom.saturating_sub(1);
+        }
+        let close = pressed(Key::Escape) || pressed(Key::Backspace) || pressed(Key::Q);
+        pressed(Key::Enter);
+        if close {
+            self.close_reader();
+        }
+        true
+    }
+    fn reader_view(&mut self, ui: &mut Ui) {
+        let Some(r) = self.reader.as_mut() else {
+            return;
+        };
+        while let Ok((page, image)) = r.results.try_recv() {
+            if let Some(image) = image {
+                let name = format!("page-{}-{page}", r.id);
+                self.reader_pages
+                    .insert(page, ui.ctx().load_texture(name, image, TextureOptions::LINEAR));
+            }
+        }
+        for far in r.forget_far() {
+            self.reader_pages.remove(&far);
+        }
+        r.request(r.page);
+        r.request(r.page + 1);
+        let (mut turn, mut zoom, mut close) = (0_i64, None, false);
+        // One bar: back on the left, title and page in the middle, size and page turns on the right.
+        let (bar, _) = ui.allocate_exact_size(vec2(ui.available_width(), 54.), Sense::hover());
+        let y = bar.center().y;
+        let at = |x: f32, w: f32| Rect::from_center_size(pos2(x, y), vec2(w, 50.));
+        if ui.put(at(bar.left() + 60., 120.), Button::new("Back")).clicked() {
+            close = true;
+        }
+        let right = bar.right();
+        let title = ui
+            .painter()
+            .layout_no_wrap(r.title.clone(), FontId::proportional(22.), TEXT);
+        ui.painter()
+            .with_clip_rect(Rect::from_min_max(
+                pos2(bar.left() + 144., bar.top()),
+                pos2(bar.center().x - 300., bar.bottom()),
+            ))
+            .galley(pos2(bar.left() + 144., y - title.size().y / 2.), title, TEXT);
+        if ui.put(at(right - 60., 120.), Button::new("Next")).clicked() {
+            turn = 1;
+        }
+        if ui.put(at(right - 190., 120.), Button::new("Previous")).clicked() {
+            turn = -1;
+        }
+        ui.painter().text(
+            pos2(right - 270., y),
+            Align2::RIGHT_CENTER,
+            format!("Page {} of {}", r.page + 1, r.pages),
+            FontId::proportional(18.),
+            MUTED,
+        );
+        for (n, label) in ["Whole page", "Read", "Large", "Full width"].into_iter().enumerate() {
+            // The four sizes sit together in the middle of the bar.
+            let x = bar.center().x - 213. + n as f32 * 142.;
+            let chosen = r.zoom == n;
+            let button = Button::new(RichText::new(label).size(16.).color(if chosen { BG } else { TEXT }))
+                .fill(if chosen { self.accent } else { CARD });
+            if ui.put(at(x, 134.), button).clicked() {
+                zoom = Some(n);
+            }
+        }
+        ui.add_space(12.);
+        let (page, zoom_now, top) = (r.page, r.zoom, r.scroll_top);
+        r.scroll_top = false;
+        let texture = self.reader_pages.get(&page).cloned();
+        let scroll = std::mem::take(&mut self.controller_scroll);
+        let mut area = ScrollArea::vertical()
+            .id_salt(("reader", page))
+            .auto_shrink([false, false]);
+        if top {
+            area = area.vertical_scroll_offset(0.);
+        }
+        area.show(ui, |ui| {
+            if scroll != 0. {
+                ui.scroll_with_delta(vec2(0., scroll));
+            }
+            let (wide, tall) = (ui.available_width(), ui.available_height());
+            let Some(t) = texture else {
+                ui.add_space(tall * 0.4);
+                ui.vertical_centered(|ui| ui.label(RichText::new("Preparing page…").color(MUTED)));
+                return;
+            };
+            let aspect = t.size_vec2().x / t.size_vec2().y;
+            let width = match zoom_now {
+                0 => (tall * aspect).min(wide),
+                1 => wide.min(900.),
+                2 => wide.min(1150.),
+                _ => wide,
+            };
+            let size = vec2(width, width / aspect);
+            // Centred, so every page sits in the same place whatever its size.
+            ui.horizontal(|ui| {
+                ui.add_space(((wide - width) / 2.).max(0.));
+                let (rect, response) = ui.allocate_exact_size(size, Sense::click());
+                ui.painter().image(
+                    t.id(),
+                    rect,
+                    Rect::from_min_max(pos2(0., 0.), pos2(1., 1.)),
+                    Color32::WHITE,
+                );
+                // Tap the right half for the next page, the left half to go back.
+                if let Some(pos) = response.interact_pointer_pos().filter(|_| response.clicked()) {
+                    turn = if pos.x > rect.center().x { 1 } else { -1 };
+                }
+            });
+        });
+        if let Some(r) = self.reader.as_mut() {
+            if turn != 0 {
+                r.go(turn);
+            }
+            if let Some(z) = zoom {
+                r.zoom = z;
+            }
+        }
+        if close {
+            self.close_reader();
+        }
+    }
     fn launch(&mut self, item: &Item) {
+        // Magazines open in the built-in reader; other viewers show these scans far too small.
+        if item.kind == "read" && item.path.to_lowercase().ends_with(".pdf") && std::path::Path::new(&item.path).is_file()
+        {
+            let page = self.history.pages.get(&item.id).copied().unwrap_or(0);
+            let ctx = self.ctx.clone();
+            self.reader_pages.clear();
+            self.reader = Some(reader::Reader::open(&ctx, &item.id, &item.title, &item.path, item.pages as u32, page));
+            self.history.recent.retain(|x| x != &item.id);
+            self.history.recent.insert(0, item.id.clone());
+            self.history.recent.truncate(24);
+            self.save();
+            return;
+        }
         let result = (|| -> Result<Child, String> {
             let mut c = build_command(item)?;
             fs::create_dir_all(state_dir()).map_err(|e| e.to_string())?;
@@ -344,6 +528,17 @@ impl Cabin {
     }
     fn controller_action(&mut self, ctx: &Context, action: gamepad::Action) {
         use gamepad::Action::*;
+        if let Some(r) = self.reader.as_mut() {
+            match action {
+                Right | Next | Accept => r.go(1),
+                Left | Previous => r.go(-1),
+                Down => self.controller_scroll = -260.,
+                Up => self.controller_scroll = 260.,
+                Back => self.close_reader(),
+                _ => {}
+            }
+            return;
+        }
         self.focus_ring = true;
         ctx.memory_mut(|m| m.surrender_focus(Id::new("search")));
         if action == Back {
@@ -873,67 +1068,144 @@ impl Cabin {
         });
         ui.advance_cursor_after_rect(rect);
     }
+    /// One flight drawn as a ticket: codes, times, terminals and the boarding pass.
+    fn flight_card(&mut self, ui: &mut Ui, rect: Rect, flight: &trip::Flight) {
+        let p = ui.painter().clone();
+        p.rect_filled(rect, 14, CARD);
+        p.rect_stroke(rect, 14, Stroke::new(1.0_f32, BORDER), StrokeKind::Inside);
+        let (l, r, t) = (rect.left() + 22., rect.right() - 22., rect.top());
+        let text = |pos: Pos2, align: Align2, s: &str, size: f32, color: Color32| {
+            p.text(pos, align, s, FontId::proportional(size), color);
+        };
+        text(pos2(l, t + 26.), Align2::LEFT_CENTER, &flight.number, 18., self.accent);
+        let carrier = [flight.operator.as_str(), flight.aircraft.as_str()]
+            .into_iter()
+            .filter(|s| !s.is_empty())
+            .collect::<Vec<_>>()
+            .join("  ·  ");
+        text(pos2(r, t + 26.), Align2::RIGHT_CENTER, &carrier, 15., MUTED);
+        // Codes with the time in the air on the line between them.
+        let y = t + 74.;
+        text(pos2(l, y), Align2::LEFT_CENTER, &flight.from_code, 40., TEXT);
+        text(pos2(r, y), Align2::RIGHT_CENTER, &flight.to_code, 40., TEXT);
+        if rect.width() > 380. {
+            p.line_segment(
+                [pos2(l + 104., y), pos2(r - 104., y)],
+                Stroke::new(1.5_f32, BORDER),
+            );
+            if let Some(m) = trip::minutes_between(&flight.departs, &flight.arrives) {
+                let label = trip::hours(m);
+                let half = label.len() as f32 * 4.6 + 12.;
+                p.rect_filled(
+                    Rect::from_center_size(pos2(rect.center().x, y), vec2(half * 2., 22.)),
+                    0,
+                    CARD,
+                );
+                text(pos2(rect.center().x, y), Align2::CENTER_CENTER, &label, 15., MUTED);
+            }
+        }
+        text(pos2(l, t + 108.), Align2::LEFT_CENTER, &flight.from_city, 15., MUTED);
+        text(pos2(r, t + 108.), Align2::RIGHT_CENTER, &flight.to_city, 15., MUTED);
+        let clock = |s: &str| trip::moment(s).map(|m| m.clock).unwrap_or_default();
+        text(pos2(l, t + 138.), Align2::LEFT_CENTER, &clock(&flight.departs), 24., TEXT);
+        text(pos2(r, t + 138.), Align2::RIGHT_CENTER, &clock(&flight.arrives), 24., TEXT);
+        text(pos2(l, t + 168.), Align2::LEFT_CENTER, &flight.from_terminal, 14., MUTED);
+        text(pos2(r, t + 168.), Align2::RIGHT_CENTER, &flight.to_terminal, 14., MUTED);
+        // The boarding pass sits in the middle of the bottom edge on every card.
+        let slot = Rect::from_center_size(pos2(rect.center().x, t + 153.), vec2(190., 44.));
+        if let Some(pass) = trip::boarding_pass(flight) {
+            let button = Button::new(RichText::new("Boarding pass").color(BG).strong())
+                .fill(self.accent)
+                .corner_radius(8);
+            if ui.put(slot, button).clicked() {
+                if let Err(e) = std::process::Command::new("/usr/bin/xdg-open")
+                    .arg(pass)
+                    .spawn()
+                {
+                    self.notice = Some((e.to_string(), true, Instant::now()));
+                }
+            }
+        } else if rect.width() > 380. {
+            text(slot.center(), Align2::CENTER_CENTER, "No boarding pass saved", 14., MUTED);
+        }
+    }
+    /// The trip at the top of the planner: every flight as a card, stops between them.
+    fn trip_cards(&mut self, ui: &mut Ui, trip: &trip::Trip) {
+        let full = ui.available_width() - 16.;
+        let now = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_secs() as i64)
+            .unwrap_or(0);
+        let (first, last) = (&trip.flights[0], &trip.flights[trip.flights.len() - 1]);
+        ui.horizontal(|ui| {
+            ui.label(RichText::new("Your trip").size(29.).strong());
+            ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
+                ui.add_space(16.);
+                ui.label(
+                    RichText::new(trip::status(trip, now))
+                        .size(18.)
+                        .color(self.accent)
+                        .strong(),
+                );
+            });
+        });
+        let mut line = format!("{} to {}", first.from_city, last.to_city);
+        if let Some(m) = trip::moment(&first.departs) {
+            line += &format!("  ·  {}", m.day);
+        }
+        if !trip.booking.is_empty() {
+            line += &format!("  ·  Booking {}", trip.booking);
+        }
+        ui.label(RichText::new(line).size(16.).color(MUTED));
+        ui.add_space(14.);
+        let (n, gap, stop_w, height) = (trip.flights.len() as f32, 14., 150., 196.);
+        let card_w = (full - (n - 1.) * (stop_w + 2. * gap)) / n;
+        if card_w < 330. {
+            // Narrow window: one card per row, all the same width.
+            for flight in &trip.flights {
+                let (rect, _) = ui.allocate_exact_size(vec2(full, height), Sense::hover());
+                self.flight_card(ui, rect, flight);
+                ui.add_space(gap);
+            }
+            return;
+        }
+        let (row, _) = ui.allocate_exact_size(vec2(full, height), Sense::hover());
+        let mut x = row.left();
+        for (i, flight) in trip.flights.iter().enumerate() {
+            let rect = Rect::from_min_size(pos2(x, row.top()), vec2(card_w, height));
+            self.flight_card(ui, rect, flight);
+            x += card_w + gap;
+            if let Some(next) = trip.flights.get(i + 1) {
+                let c = pos2(x + stop_w / 2., row.center().y);
+                let p = ui.painter();
+                p.text(c - vec2(0., 30.), Align2::CENTER_CENTER, "Stopover", FontId::proportional(14.), MUTED);
+                p.text(c, Align2::CENTER_CENTER, &flight.to_city, FontId::proportional(19.), TEXT);
+                if let Some(m) = trip::minutes_between(&flight.arrives, &next.departs) {
+                    p.text(
+                        c + vec2(0., 30.),
+                        Align2::CENTER_CENTER,
+                        trip::hours(m),
+                        FontId::proportional(18.),
+                        self.accent,
+                    );
+                }
+                x += stop_w + gap;
+            }
+        }
+    }
     fn flight_planner(&mut self, ui: &mut Ui) {
-        ui.heading("Make time fly");
-        ui.label("One line-up per flight and stopover. Enter the time you can actually use.");
-        ui.add_space(16.);
+        let trip = trip::load();
+        if let Some(trip) = &trip {
+            self.trip_cards(ui, trip);
+            ui.add_space(30.);
+        }
         if self.history.plan.is_empty() {
             self.history.plan = vec![180];
         }
-        let before = (self.history.plan.clone(), self.history.plan_kinds.clone());
-        let mut remove = None;
         let count = self.history.plan.len();
         self.history.plan_kinds.resize(count, "flight".into());
+        let before = (self.history.plan.clone(), self.history.plan_kinds.clone());
         let names = planner::segment_names(&self.history.plan_kinds, count);
-        for (n, minutes) in self.history.plan.iter_mut().enumerate() {
-            ui.horizontal_wrapped(|ui| {
-                ui.label(if count > 1 {
-                    names[n].clone()
-                } else {
-                    "Flight length".into()
-                });
-                if ui.add_sized([60., 54.], Button::new("−")).clicked() {
-                    *minutes = minutes.saturating_sub(15).max(15);
-                }
-                ui.add(
-                    DragValue::new(minutes)
-                        .range(15..=1440)
-                        .speed(5)
-                        .custom_formatter(|v, _| format!("{}h {:02}m", v as u32 / 60, v as u32 % 60)),
-                );
-                if ui.add_sized([60., 54.], Button::new("+")).clicked() {
-                    *minutes = (*minutes + 15).min(1440);
-                }
-                for (m, label) in [(60, "1h"), (180, "3h"), (360, "6h"), (600, "10h")] {
-                    if ui.button(label).clicked() {
-                        *minutes = m;
-                    }
-                }
-                if count > 1 && ui.button("Remove").clicked() {
-                    remove = Some(n);
-                }
-            });
-        }
-        if let Some(n) = remove {
-            self.history.plan.remove(n);
-            self.history.plan_kinds.remove(n);
-        }
-        if self.history.plan.len() < 6 {
-            ui.horizontal_wrapped(|ui| {
-                if ui.button("Add a connecting flight").clicked() {
-                    self.history.plan.push(90);
-                    self.history.plan_kinds.push("flight".into());
-                }
-                if ui.button("Add a stopover").clicked() {
-                    self.history.plan.push(60);
-                    self.history.plan_kinds.push("stop".into());
-                }
-            });
-        }
-        if (self.history.plan.clone(), self.history.plan_kinds.clone()) != before {
-            self.save();
-        }
-        ui.label(RichText::new(self.battery.label()).color(self.accent));
         let ordered = curation::home_items(
             &self.items,
             &self.progress,
@@ -950,63 +1222,207 @@ impl Cabin {
             })
             .collect();
         let plans = planner::trip(&ordered, &self.history.plan, &remaining);
-        ui.label("Films use their remaining runtime. Reading and game sessions are estimates.");
+        let full = ui.available_width() - 16.;
+        ui.horizontal(|ui| {
+            ui.label(RichText::new("Your line-up").size(29.).strong());
+            ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
+                ui.add_space(16.);
+                ui.label(RichText::new(self.battery.label()).size(16.).color(MUTED));
+            });
+        });
+        ui.label(
+            RichText::new("Set the time you can actually use. Films count their remaining runtime; reading and games are suggestions.")
+                .size(16.)
+                .color(MUTED),
+        );
         self.nav_columns = 1;
         let legs = self.history.plan.clone();
-        let names = planner::segment_names(&self.history.plan_kinds, legs.len());
+        let kinds = self.history.plan_kinds.clone();
+        let (mut adjust, mut remove, mut open, mut launch) = (None, None, None, None);
+        let mut flight_index = 0;
         for (leg, plan) in plans.into_iter().enumerate() {
+            // What this part of the trip is, from the saved flight details.
+            let context = match &trip {
+                Some(t) if kinds[leg] == "stop" => t
+                    .flights
+                    .get(flight_index.max(1) - 1)
+                    .zip(t.flights.get(flight_index))
+                    .map(|(a, b)| {
+                        let wait = trip::minutes_between(&a.arrives, &b.departs)
+                            .map(|m| format!("  ·  {} between flights", trip::hours(m)))
+                            .unwrap_or_default();
+                        format!("{}{wait}", a.to_city)
+                    })
+                    .unwrap_or_default(),
+                Some(t) => t
+                    .flights
+                    .get(flight_index)
+                    .map(|f| {
+                        let air = trip::minutes_between(&f.departs, &f.arrives)
+                            .map(|m| format!("  ·  {} gate to gate", trip::hours(m)))
+                            .unwrap_or_default();
+                        format!("{}  ·  {} to {}{air}", f.number, f.from_code, f.to_code)
+                    })
+                    .unwrap_or_default(),
+                None => String::new(),
+            };
+            if kinds[leg] != "stop" {
+                flight_index += 1;
+            }
             let total: u32 = plan.iter().map(|s| s.minutes).sum();
-            ui.add_space(18.);
-            ui.heading(format!(
-                "{}{}h {:02}m planned · {} min spare",
-                if legs.len() > 1 {
-                    format!("{} · ", names[leg])
-                } else {
-                    String::new()
-                },
-                total / 60,
-                total % 60,
-                legs[leg].saturating_sub(total)
-            ));
+            ui.add_space(22.);
+            // Header: name and context on the left; time, summary and remove in fixed columns on the right.
+            let (head, _) = ui.allocate_exact_size(vec2(full, 54.), Sense::hover());
+            let y = head.center().y;
+            let p = ui.painter().clone();
+            p.text(
+                head.left_center(),
+                Align2::LEFT_CENTER,
+                if count > 1 { names[leg].as_str() } else { "Flight" },
+                FontId::proportional(22.),
+                TEXT,
+            );
+            p.text(
+                pos2(head.left() + 130., y),
+                Align2::LEFT_CENTER,
+                &context,
+                FontId::proportional(16.),
+                MUTED,
+            );
+            let right = head.right();
+            let square = |x: f32| Rect::from_center_size(pos2(x, y), vec2(54., 50.));
+            if count > 1
+                && ui
+                    .put(
+                        Rect::from_center_size(pos2(right - 50., y), vec2(100., 50.)),
+                        Button::new(RichText::new("Remove").size(16.)),
+                    )
+                    .clicked()
+            {
+                remove = Some(leg);
+            }
+            if ui.put(square(right - 144.), Button::new("+")).clicked() {
+                adjust = Some((leg, 15_i32));
+            }
+            p.text(
+                pos2(right - 230., y),
+                Align2::CENTER_CENTER,
+                trip::hours(legs[leg]),
+                FontId::proportional(22.),
+                TEXT,
+            );
+            if ui.put(square(right - 316.), Button::new("−")).clicked() {
+                adjust = Some((leg, -15));
+            }
+            p.text(
+                pos2(right - 364., y),
+                Align2::RIGHT_CENTER,
+                format!(
+                    "{} planned  ·  {} min spare",
+                    trip::hours(total),
+                    legs[leg].saturating_sub(total)
+                ),
+                FontId::proportional(16.),
+                self.accent,
+            );
             for slot in plan {
                 self.nav_cards.push(slot.item.id.clone());
                 let focused = self.focus_ring && self.focused_card.as_ref() == Some(&slot.item.id);
-                ui.add_space(12.);
-                let row = Frame::new()
-                    .fill(CARD)
-                    .stroke(Stroke::new(
-                        2.0_f32,
-                        if focused { self.accent } else { CARD },
-                    ))
-                    .corner_radius(12)
-                    .inner_margin(18)
-                    .show(ui, |ui| {
-                        ui.horizontal_wrapped(|ui| {
-                            ui.label(
-                                RichText::new(format!(
-                                    "{} min{}",
-                                    slot.minutes,
-                                    if slot.estimated { " suggested" } else { "" }
-                                ))
-                                .color(self.accent),
-                            );
-                            if ui.button(&slot.item.title).clicked() {
-                                self.detail = Some(slot.item.id.clone());
-                                self.gallery_index = 0;
-                            }
-                            if ui.button(action_label(&slot.item)).clicked() {
-                                self.launch(&slot.item);
-                            }
-                        });
-                    });
+                ui.add_space(8.);
+                // Every row is the full width, with the same columns: picture, time, title, action.
+                let (rect, response) = ui.allocate_exact_size(vec2(full, 76.), Sense::click());
+                ui.painter().rect_filled(
+                    rect,
+                    12,
+                    if response.hovered() { Color32::from_rgb(35, 44, 56) } else { CARD },
+                );
                 if focused {
+                    ui.painter().rect_stroke(
+                        rect,
+                        12,
+                        Stroke::new(3.0_f32, self.accent),
+                        StrokeKind::Inside,
+                    );
                     self.focused_leg = leg;
                 }
+                let thumb = Rect::from_min_size(rect.min + vec2(8., 8.), vec2(107., 60.));
+                self.picture_fit(ui, thumb, &slot.item.image, false, slot.item.kind == "read");
+                let cy = rect.center().y;
+                ui.painter().text(
+                    pos2(rect.left() + 134., cy),
+                    Align2::LEFT_CENTER,
+                    format!(
+                        "{} min{}",
+                        slot.minutes,
+                        if slot.estimated { " suggested" } else { "" }
+                    ),
+                    FontId::proportional(18.),
+                    self.accent,
+                );
+                let title = ui.painter().layout_no_wrap(
+                    slot.item.title.clone(),
+                    FontId::proportional(20.),
+                    TEXT,
+                );
+                let title_at = pos2(rect.left() + 300., cy - title.size().y / 2.);
+                ui.painter()
+                    .with_clip_rect(Rect::from_min_max(
+                        pos2(title_at.x, rect.top()),
+                        pos2(rect.right() - 220., rect.bottom()),
+                    ))
+                    .galley(title_at, title, TEXT);
+                let action = Rect::from_center_size(pos2(rect.right() - 108., cy), vec2(190., 50.));
+                if ui.put(action, Button::new(action_label(&slot.item))).clicked() {
+                    launch = Some(slot.item.clone());
+                } else if response.clicked() {
+                    open = Some(slot.item.id.clone());
+                }
                 if focused && self.scroll_focus {
-                    ui.scroll_to_rect(row.response.rect, Some(Align::Center));
+                    ui.scroll_to_rect(rect, Some(Align::Center));
                     self.scroll_focus = false;
                 }
             }
+        }
+        ui.add_space(22.);
+        if count < 6 {
+            ui.horizontal_wrapped(|ui| {
+                if ui.button("Add a connecting flight").clicked() {
+                    self.history.plan.push(90);
+                    self.history.plan_kinds.push("flight".into());
+                }
+                if ui.button("Add a stopover").clicked() {
+                    self.history.plan.push(60);
+                    self.history.plan_kinds.push("stop".into());
+                }
+            });
+        }
+        if trip.is_none() {
+            ui.label(
+                RichText::new(format!(
+                    "Flight details and boarding passes appear here when {} exists.",
+                    trip::dir().join("trip.json").display()
+                ))
+                .size(14.)
+                .color(MUTED),
+            );
+        }
+        if let Some((leg, step)) = adjust {
+            let minutes = &mut self.history.plan[leg];
+            *minutes = (*minutes as i32 + step).clamp(15, 1440) as u32;
+        }
+        if let Some(leg) = remove {
+            self.history.plan.remove(leg);
+            self.history.plan_kinds.remove(leg);
+        }
+        if (self.history.plan.clone(), self.history.plan_kinds.clone()) != before {
+            self.save();
+        }
+        if let Some(id) = open {
+            self.detail = Some(id);
+            self.gallery_index = 0;
+        }
+        if let Some(item) = launch {
+            self.launch(&item);
         }
     }
     fn detail_page(&mut self, ui: &mut Ui, item: Item) {
@@ -1204,6 +1620,12 @@ impl Cabin {
 impl eframe::App for Cabin {
     fn update(&mut self, ctx: &Context, _frame: &mut eframe::Frame) {
         self.frames += 1;
+        if let Some(id) = self.open_on_start.take() {
+            if let Some(item) = self.items.iter().find(|i| i.id == id).cloned() {
+                self.launch(&item);
+            }
+        }
+        let reading = self.reader_input(ctx);
         // One scripted move every quarter second, once the first cards are laid out.
         if !self.scripted_moves.is_empty() && self.detail.is_none() && !self.nav_cards.is_empty() {
             let due = 1500 + 250 * self.scripted_done as u128;
@@ -1466,6 +1888,10 @@ impl eframe::App for Cabin {
                 });
         }
         CentralPanel::default().frame(Frame::new().fill(BG).inner_margin(Margin::symmetric(30,24))).show(ctx,|ui|{
+            if reading && self.reader.is_some() {
+                self.reader_view(ui);
+                return;
+            }
             self.search_toolbar(ui);
             ui.add_space(24.);
             if let Some((text,error,_))=&self.notice{let t=text.clone();let error=*error;Frame::new().fill(if error{Color32::from_rgb(68,37,36)}else{Color32::from_rgb(26,53,48)}).corner_radius(8).inner_margin(10).show(ui,|ui|{ui.horizontal_wrapped(|ui|{ui.label(&t);if ui.small_button("Dismiss").clicked(){self.notice=None;}});});ui.add_space(10.);}
@@ -1596,6 +2022,7 @@ fn main() {
         .unwrap_or("home".into());
     let detail = arg_value(&args, "--detail");
     let screenshot = arg_value(&args, "--screenshot").map(PathBuf::from);
+    let read = arg_value(&args, "--read");
     let moves: Vec<navigation::Direction> = arg_value(&args, "--moves")
         .unwrap_or_default()
         .split(',')
@@ -1626,7 +2053,7 @@ fn main() {
     if let Err(e) = eframe::run_native(
         "cabin",
         options,
-        Box::new(move |cc| Ok(Box::new(Cabin::new(cc, section, detail, screenshot, moves)))),
+        Box::new(move |cc| Ok(Box::new(Cabin::new(cc, section, detail, screenshot, moves, read)))),
     ) {
         eprintln!("Could not open Cabin: {e}");
         std::process::exit(1);
