@@ -1,6 +1,7 @@
 mod curation;
 mod library;
 mod navigation;
+mod planner;
 mod progress;
 mod validation;
 use eframe::egui::*;
@@ -81,6 +82,8 @@ struct Cabin {
     focused_card: Option<String>,
     focus_ring: bool,
     scroll_focus: bool,
+    flight_minutes: u32,
+    battery: planner::Battery,
     gallery_index: usize,
     accent: Color32,
     notice: Option<(String, bool, Instant)>,
@@ -167,6 +170,8 @@ impl Cabin {
             focused_card: None,
             focus_ring: false,
             scroll_focus: false,
+            flight_minutes: 180,
+            battery: planner::Battery::read(),
             gallery_index: 0,
             accent: accent(),
             notice,
@@ -281,6 +286,7 @@ impl Cabin {
                     ui.spacing_mut().item_spacing = vec2(8., 8.);
                     for (id, label) in [
                         ("home", "Discover"),
+                        ("planner", "Flight"),
                         ("travel", "Travel"),
                         ("watch", "Watch"),
                         ("puzzles", "Puzzles"),
@@ -514,6 +520,83 @@ impl Cabin {
         });
         ui.advance_cursor_after_rect(rect);
     }
+    fn flight_planner(&mut self, ui: &mut Ui) {
+        ui.heading("Make time fly");
+        ui.label("Build a line-up for your flight.");
+        ui.add_space(16.);
+        ui.horizontal_wrapped(|ui| {
+            ui.label("Flight length");
+            if ui.add_sized([60., 54.], Button::new("−")).clicked() {
+                self.flight_minutes = self.flight_minutes.saturating_sub(15).max(15);
+            }
+            ui.add(
+                DragValue::new(&mut self.flight_minutes)
+                    .range(15..=1440)
+                    .speed(15)
+                    .suffix(" min"),
+            );
+            if ui.add_sized([60., 54.], Button::new("+")).clicked() {
+                self.flight_minutes = (self.flight_minutes + 15).min(1440);
+            }
+            for (m, label) in [(60, "1h"), (180, "3h"), (360, "6h"), (600, "10h")] {
+                if ui.button(label).clicked() {
+                    self.flight_minutes = m;
+                }
+            }
+        });
+        ui.label(RichText::new(self.battery.label()).color(self.accent));
+        let ordered = curation::home_items(
+            &self.items,
+            &self.progress,
+            self.travel_enabled,
+            self.show_unverified,
+        );
+        let remaining = ordered
+            .iter()
+            .map(|i| {
+                (
+                    i.id.clone(),
+                    i.seconds.saturating_sub(self.progress.seconds(i) as u64),
+                )
+            })
+            .collect();
+        let plan = planner::lineup(&ordered, self.flight_minutes, &remaining);
+        let total: u32 = plan.iter().map(|s| s.minutes).sum();
+        ui.add_space(18.);
+        ui.heading(format!(
+            "{}h {:02}m planned · {} min spare",
+            total / 60,
+            total % 60,
+            self.flight_minutes.saturating_sub(total)
+        ));
+        ui.label("Films use their remaining runtime. Reading and game sessions are estimates.");
+        for slot in plan {
+            ui.add_space(12.);
+            Frame::new()
+                .fill(CARD)
+                .corner_radius(12)
+                .inner_margin(18)
+                .show(ui, |ui| {
+                    ui.horizontal_wrapped(|ui| {
+                        ui.label(
+                            RichText::new(format!(
+                                "{} min{}",
+                                slot.minutes,
+                                if slot.estimated { " suggested" } else { "" }
+                            ))
+                            .color(self.accent),
+                        );
+                        if ui.button(&slot.item.title).clicked() {
+                            self.detail = Some(slot.item.id.clone());
+                            self.gallery_index = 0;
+                        }
+                        if ui.button(action_label(&slot.item)).clicked() {
+                            self.launch(&slot.item);
+                        }
+                    });
+                });
+        }
+    }
     fn detail_page(&mut self, ui: &mut Ui, item: Item) {
         ui.horizontal(|ui| {
             if ui.button("Back to library").clicked() {
@@ -737,6 +820,7 @@ impl eframe::App for Cabin {
             self.accent = accent();
             self.theme_check = Instant::now();
             self.progress.refresh();
+            self.battery = planner::Battery::read();
         }
         let events = ctx.input(|i| i.events.clone());
         for event in events {
@@ -925,6 +1009,7 @@ impl eframe::App for Cabin {
             ScrollArea::vertical().id_salt(("content",self.section.clone(),self.detail.clone())).auto_shrink([false,false]).show(ui,|ui|{
                 if let Some(item)=self.items.iter().find(|i|Some(&i.id)==self.detail.as_ref()).cloned(){self.detail_page(ui,item);return;}
                 if self.section=="atari" {ui.checkbox(&mut self.show_unverified,"Show unverified games");ui.label(RichText::new("Verified means a game screen was reached; it is not a complete playthrough.").size(16.).color(MUTED));ui.add_space(12.);}
+                if self.section=="planner" {self.flight_planner(ui);return;}
                 let (title,sub)=match self.section.as_str(){
                     "watch"=>("A window into another world.","Space, history, and the stories behind extraordinary events."),
                     "puzzles"=>("Just one more puzzle.","Forty little challenges. No accounts, no timers, no connection needed."),
