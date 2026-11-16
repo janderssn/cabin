@@ -1,5 +1,6 @@
 mod curation;
 mod library;
+mod navigation;
 mod progress;
 mod validation;
 use eframe::egui::*;
@@ -74,6 +75,11 @@ struct Cabin {
     pending: HashSet<String>,
     image_jobs: mpsc::Sender<String>,
     image_results: mpsc::Receiver<(String, Option<ColorImage>)>,
+    nav_cards: Vec<String>,
+    nav_columns: usize,
+    focused_card: Option<String>,
+    focus_ring: bool,
+    scroll_focus: bool,
     gallery_index: usize,
     accent: Color32,
     notice: Option<(String, bool, Instant)>,
@@ -153,6 +159,11 @@ impl Cabin {
             query: String::new(),
             detail,
             textures: HashMap::new(),
+            nav_cards: Vec::new(),
+            nav_columns: 1,
+            focused_card: None,
+            focus_ring: false,
+            scroll_focus: false,
             gallery_index: 0,
             accent: accent(),
             notice,
@@ -308,6 +319,12 @@ impl Cabin {
     }
     fn card(&mut self, ui: &mut Ui, item: &Item, width: f32) {
         let (rect, response) = ui.allocate_exact_size(vec2(width, 320.), Sense::click());
+        self.nav_cards.push(item.id.clone());
+        let focused = self.focus_ring && self.focused_card.as_ref() == Some(&item.id);
+        if focused && self.scroll_focus {
+            ui.scroll_to_rect(rect, Some(Align::Center));
+            self.scroll_focus = false;
+        }
         if !ui.is_rect_visible(rect) {
             return;
         }
@@ -317,11 +334,11 @@ impl Cabin {
             CARD
         };
         ui.painter().rect_filled(rect, 14, fill);
-        if response.hovered() {
+        if response.hovered() || focused {
             ui.painter().rect_stroke(
                 rect,
                 14,
-                Stroke::new(1.0_f32, self.accent.gamma_multiply(0.65)),
+                Stroke::new(if focused { 3_f32 } else { 1_f32 }, self.accent),
                 StrokeKind::Inside,
             );
         }
@@ -432,6 +449,7 @@ impl Cabin {
             return;
         }
         let n = ((ui.available_width() + 16.) / 330.).floor().max(1.) as usize;
+        self.nav_columns = n;
         let width = (ui.available_width() - 16. * (n - 1) as f32) / n as f32;
         for chunk in items.chunks(n) {
             ui.horizontal_top(|ui| {
@@ -764,7 +782,41 @@ impl eframe::App for Cabin {
             if ctx.input(|i| i.key_pressed(Key::Questionmark)) {
                 self.help = !self.help;
             }
-            if ctx.input(|i| i.key_pressed(Key::Space)) {
+            if self.detail.is_none() {
+                for (key, direction) in [
+                    (Key::ArrowLeft, navigation::Direction::Left),
+                    (Key::ArrowRight, navigation::Direction::Right),
+                    (Key::ArrowUp, navigation::Direction::Up),
+                    (Key::ArrowDown, navigation::Direction::Down),
+                ] {
+                    if ctx.input(|i| i.key_pressed(key)) {
+                        let current = self
+                            .focused_card
+                            .as_ref()
+                            .and_then(|id| self.nav_cards.iter().position(|x| x == id));
+                        if let Some(next) = navigation::next_index(
+                            current,
+                            self.nav_cards.len(),
+                            self.nav_columns,
+                            direction,
+                        ) {
+                            self.focused_card = Some(self.nav_cards[next].clone());
+                            self.focus_ring = true;
+                            self.scroll_focus = true;
+                        }
+                    }
+                }
+                if ctx.input(|i| i.key_pressed(Key::Enter)) {
+                    if let Some(id) = self
+                        .focused_card
+                        .clone()
+                        .or_else(|| self.nav_cards.first().cloned())
+                    {
+                        self.detail = Some(id);
+                        self.gallery_index = 0;
+                    }
+                }
+            } else if ctx.input(|i| i.key_pressed(Key::Space) || i.key_pressed(Key::Enter)) {
                 if let Some(item) = self
                     .items
                     .iter()
@@ -774,6 +826,10 @@ impl eframe::App for Cabin {
                     self.launch(&item);
                 }
             }
+        }
+        self.nav_cards.clear();
+        if ctx.input(|i| i.pointer.any_pressed()) {
+            self.focus_ring = false;
         }
         let mut errors = Vec::new();
         self.children
@@ -902,7 +958,9 @@ impl eframe::App for Cabin {
                     for (k, v) in [
                         ("Ctrl + F", "Search the collection"),
                         ("Escape", "Back / clear search"),
-                        ("Space", "Open the selected item"),
+                        ("Arrows", "Move through the grid"),
+                        ("Enter", "Open details / launch"),
+                        ("Space", "Launch from details"),
                         ("Q", "Quit Cabin"),
                         ("F11", "Toggle fullscreen"),
                         ("F12 in Hatari", "Settings and disk swaps"),
