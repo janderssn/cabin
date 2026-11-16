@@ -16,7 +16,7 @@ The rejected city/European travel picks and Pacific-war documentaries are remove
 
 Open **Cabin** from the desktop launcher or run `~/.local/bin/cabin`.
 
-- Tap a card to see details; swipe to scroll. The bottom navigation stays available. **Keys** opens the touch keyboard.
+- Tap a card to see details; swipe to scroll. The bottom navigation stays available. **Keyboard** opens the touch keyboard.
 - Arrows move between cards; Enter opens details or launches; Space launches from details. Escape goes back, Ctrl+F searches, Q quits, F11 toggles fullscreen.
 - **Flight** accepts a flight length and proposes films, reading and games within it. Film durations use saved progress; reading/game sessions are estimates. Battery data comes from `/sys/class/power_supply/BAT0` and uses current discharge, when available.
 - **Listen** scans `~/music/flight/` recursively. Add MP3, M4A/M4B, FLAC, Ogg/Opus, WAV or AAC and tap **Scan audio folder**. No audio has been downloaded automatically.
@@ -27,6 +27,19 @@ Open **Cabin** from the desktop launcher or run `~/.local/bin/cabin`.
 “Verified” for Atari means an identifiable game screen was reached, not that a full playthrough passed. The expansion mission for Voyage Beyond remains unverified even though the base game boots.
 
 The home screen derives its hero and mixed shelves from the catalogue. **Continue watching** uses mpv's `watch_later` files, with progress on cards and detail pages. Positions shorter than five seconds or near the end are not suggested as unfinished.
+
+## Controllers
+
+Cabin supports hot-plugged gamepads through [GilRs](https://docs.rs/gilrs/latest/gilrs/), including SDL/Steam controller mappings. No controller is required for touch or keyboard use.
+
+- D-pad or left stick moves the visible focus ring; A / PlayStation cross opens a card and launches from its detail page. B / circle goes back.
+- LB/RB switches sections. X / square toggles a favorite. Y / triangle opens search; use the D-pad and A to type on the on-screen keyboard, and B to finish. Start opens help.
+- In Flight, left/right adjusts the duration by 15 minutes and up/down selects the suggested line-up. In details, up/down scrolls and left/right changes gallery images.
+- Input runs on a background thread with a stick deadzone and delayed repeat. Cabin ignores controller actions when unfocused or while its launched player/game is running, and requests focus when that process exits.
+
+Controller mapping, deadzone, repeat timing and search-key navigation have automated tests. No physical controller was attached during verification, so hardware behavior remains to be playtested. These controls navigate Cabin; individual games and readers retain their own controls, and mouse/keyboard-only games are not automatically remapped.
+
+The search toolbar uses a rounded field, centered text, a clear action and an accent focus ring. Its secondary actions wrap below the field on narrow displays.
 
 ## Build, install and validate
 

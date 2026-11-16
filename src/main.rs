@@ -1,4 +1,5 @@
 mod curation;
+mod gamepad;
 mod library;
 mod navigation;
 mod planner;
@@ -67,6 +68,10 @@ fn desktop_fullscreen(action: &str) -> bool {
     false
 }
 struct Cabin {
+    gamepad: gamepad::Input,
+    controller: Option<String>,
+    keyboard_key: usize,
+    controller_scroll: f32,
     items: Vec<Item>,
     progress: progress::Progress,
     history: History,
@@ -156,6 +161,10 @@ impl Cabin {
             }
         });
         Self {
+            gamepad: gamepad::Input::new(cc.egui_ctx.clone()),
+            controller: None,
+            keyboard_key: 0,
+            controller_scroll: 0.,
             pending: HashSet::new(),
             image_jobs,
             image_results,
@@ -280,8 +289,178 @@ impl Cabin {
             Err(e) => self.notice = Some((e, true, Instant::now())),
         }
     }
+    fn move_focus(&mut self, direction: navigation::Direction) {
+        let current = self
+            .focused_card
+            .as_ref()
+            .and_then(|id| self.nav_cards.iter().position(|x| x == id));
+        if let Some(next) =
+            navigation::next_index(current, self.nav_cards.len(), self.nav_columns, direction)
+        {
+            self.focused_card = Some(self.nav_cards[next].clone());
+            self.focus_ring = true;
+            self.scroll_focus = true;
+        }
+    }
+    fn keyboard_press(&mut self, index: usize) {
+        if let Some(key) = "qwertyuiopasdfghjklzxcvbnm".chars().nth(index) {
+            self.query.push(key);
+            self.detail = None;
+        } else {
+            match index {
+                26 => self.query.clear(),
+                27 => self.query.push(' '),
+                28 => {
+                    self.query.pop();
+                }
+                29 => self.touch_keyboard = false,
+                _ => {}
+            }
+        }
+    }
+    fn controller_action(&mut self, ctx: &Context, action: gamepad::Action) {
+        use gamepad::Action::*;
+        self.focus_ring = true;
+        ctx.memory_mut(|m| m.surrender_focus(Id::new("search")));
+        if action == Back {
+            if self.help {
+                self.help = false;
+            } else if self.touch_keyboard {
+                self.touch_keyboard = false;
+            } else if self.detail.is_some() {
+                self.detail = None;
+                self.scroll_focus = true;
+            } else if !self.query.is_empty() {
+                self.query.clear();
+            } else {
+                self.section = "home".into();
+            }
+            return;
+        }
+        if action == Help {
+            self.help = !self.help;
+            return;
+        }
+        if self.help {
+            return;
+        }
+        if action == Search {
+            self.touch_keyboard = !self.touch_keyboard;
+            self.detail = None;
+            return;
+        }
+        if self.touch_keyboard {
+            if action == Accept {
+                self.keyboard_press(self.keyboard_key);
+            } else {
+                self.keyboard_key = navigation::keyboard_index(self.keyboard_key, action);
+            }
+            return;
+        }
+        if matches!(action, Previous | Next) {
+            let sections = [
+                "home",
+                "planner",
+                "travel",
+                "watch",
+                "listen",
+                "puzzles",
+                "atari",
+                "read",
+                "favorites",
+                "recent",
+            ];
+            let i = sections
+                .iter()
+                .position(|s| *s == self.section)
+                .unwrap_or(0);
+            self.section = sections[(i + if action == Next {
+                1
+            } else {
+                sections.len() - 1
+            }) % sections.len()]
+            .into();
+            self.detail = None;
+            self.query.clear();
+            self.focused_card = None;
+            return;
+        }
+        if self.section == "planner" && self.detail.is_none() && matches!(action, Left | Right) {
+            self.flight_minutes = if action == Left {
+                self.flight_minutes.saturating_sub(15).max(15)
+            } else {
+                (self.flight_minutes + 15).min(1440)
+            };
+            return;
+        }
+        if self.detail.is_some() {
+            match action {
+                Up => {
+                    self.controller_scroll = 240.;
+                    return;
+                }
+                Down => {
+                    self.controller_scroll = -240.;
+                    return;
+                }
+                Left => {
+                    self.gallery_index = self.gallery_index.saturating_sub(1);
+                    return;
+                }
+                Right => {
+                    if let Some(item) = self
+                        .items
+                        .iter()
+                        .find(|i| Some(&i.id) == self.detail.as_ref())
+                    {
+                        self.gallery_index =
+                            (self.gallery_index + 1).min(item.gallery.len().saturating_sub(1));
+                    }
+                    return;
+                }
+                _ => {}
+            }
+        }
+        match action {
+            Left | Right | Up | Down if self.detail.is_none() => self.move_focus(match action {
+                Left => navigation::Direction::Left,
+                Right => navigation::Direction::Right,
+                Up => navigation::Direction::Up,
+                _ => navigation::Direction::Down,
+            }),
+            Accept => {
+                if let Some(id) = self.detail.clone() {
+                    if let Some(item) = self.items.iter().find(|i| i.id == id).cloned() {
+                        self.launch(&item);
+                        self.gamepad.set_enabled(false);
+                    }
+                } else if let Some(id) = self
+                    .focused_card
+                    .clone()
+                    .filter(|id| self.nav_cards.contains(id))
+                    .or_else(|| self.nav_cards.first().cloned())
+                {
+                    self.focused_card = Some(id.clone());
+                    self.detail = Some(id);
+                    self.gallery_index = 0;
+                }
+            }
+            Favorite => {
+                if let Some(id) = self.detail.clone().or_else(|| self.focused_card.clone()) {
+                    if self.history.favorites.contains(&id) {
+                        self.history.favorites.retain(|i| i != &id);
+                    } else {
+                        self.history.favorites.insert(id);
+                    }
+                    self.save();
+                }
+            }
+            _ => {}
+        }
+    }
     fn search_toolbar(&mut self, ui: &mut Ui) {
         let wide = ui.available_width() >= 900.;
+        let compact = ui.available_width() < 560.;
         ui.horizontal(|ui| {
             ui.spacing_mut().item_spacing.x = 12.;
             if wide {
@@ -295,8 +474,8 @@ impl Cabin {
                 });
                 ui.add_space((ui.available_width() - 730.).max(16.));
             }
-            let search_width = (ui.available_width() - 204.).max(100.);
-            let (rect, _) = ui.allocate_exact_size(vec2(search_width, 56.), Sense::hover());
+            let search_width = (ui.available_width() - if compact { 0. } else { 204. }).max(100.);
+            let (rect, field) = ui.allocate_exact_size(vec2(search_width, 56.), Sense::click());
             let id = Id::new("search");
             let focused = ui.memory(|m| m.has_focus(id));
             ui.painter().rect(
@@ -342,7 +521,7 @@ impl Cabin {
                     .text_color(TEXT)
                     .hint_text(RichText::new("Search collection").color(MUTED)),
             );
-            if self.focus_search {
+            if self.focus_search || field.clicked() {
                 response.request_focus();
                 self.focus_search = false;
             }
@@ -382,38 +561,49 @@ impl Cabin {
                     response.request_focus();
                 }
             }
-            for (label, active) in [("Keyboard", self.touch_keyboard), ("Reload", false)] {
-                let r = ui.add_sized(
-                    [if label == "Keyboard" { 94. } else { 66. }, 56.],
-                    Button::new(RichText::new(label).size(16.).color(if active {
-                        self.accent
-                    } else {
-                        MUTED
-                    }))
-                    .fill(if active { CARD } else { BG })
-                    .corner_radius(14.),
-                );
-                if r.clicked() {
-                    if label == "Keyboard" {
-                        self.touch_keyboard = !self.touch_keyboard;
-                    } else {
-                        match load() {
-                            Ok(i) => {
-                                self.progress = progress::Progress::new(&i);
-                                self.travel_enabled = curation::travel_enabled();
-                                self.items = i;
-                            }
-                            Err(e) => self.notice = Some((e, true, Instant::now())),
+            if !compact {
+                self.toolbar_actions(ui);
+            }
+        });
+        if compact {
+            ui.horizontal(|ui| self.toolbar_actions(ui));
+        }
+    }
+    fn toolbar_actions(&mut self, ui: &mut Ui) {
+        for (label, active) in [("Keyboard", self.touch_keyboard), ("Reload", false)] {
+            let r = ui.add_sized(
+                [if label == "Keyboard" { 94. } else { 66. }, 56.],
+                Button::new(RichText::new(label).size(16.).color(if active {
+                    self.accent
+                } else {
+                    MUTED
+                }))
+                .fill(if active { CARD } else { BG })
+                .corner_radius(14.),
+            );
+            if r.clicked() {
+                if label == "Keyboard" {
+                    self.touch_keyboard = !self.touch_keyboard;
+                } else {
+                    match load() {
+                        Ok(i) => {
+                            self.progress = progress::Progress::new(&i);
+                            self.travel_enabled = curation::travel_enabled();
+                            self.items = i;
                         }
+                        Err(e) => self.notice = Some((e, true, Instant::now())),
                     }
                 }
             }
-        });
+        }
     }
     fn sidebar(&mut self, ctx: &Context) {
         TopBottomPanel::bottom("touch_navigation")
             .frame(Frame::new().fill(PANEL).inner_margin(12))
             .show(ctx, |ui| {
+                if self.controller.is_some() {
+                    ui.label(RichText::new(if self.touch_keyboard {"D-pad  Choose key     A / ×  Type     B / ○  Done"} else if self.section=="planner" && self.detail.is_none() {"← / →  Flight length     ↑ / ↓  Line-up     A / ×  Open     LB / RB  Sections"} else {"D-pad / stick  Browse     A / ×  Open / play     B / ○  Back     LB / RB  Sections     X / □  Favorite     Y / △  Search"}).size(16.).color(MUTED));
+                }
                 ui.horizontal_wrapped(|ui| {
                     ui.spacing_mut().item_spacing = vec2(8., 8.);
                     for (id, label) in [
@@ -703,10 +893,17 @@ impl Cabin {
             self.flight_minutes.saturating_sub(total)
         ));
         ui.label("Films use their remaining runtime. Reading and game sessions are estimates.");
+        self.nav_columns = 1;
         for slot in plan {
+            self.nav_cards.push(slot.item.id.clone());
+            let focused = self.focus_ring && self.focused_card.as_ref() == Some(&slot.item.id);
             ui.add_space(12.);
-            Frame::new()
+            let row = Frame::new()
                 .fill(CARD)
+                .stroke(Stroke::new(
+                    2.0_f32,
+                    if focused { self.accent } else { CARD },
+                ))
                 .corner_radius(12)
                 .inner_margin(18)
                 .show(ui, |ui| {
@@ -728,6 +925,10 @@ impl Cabin {
                         }
                     });
                 });
+            if focused && self.scroll_focus {
+                ui.scroll_to_rect(row.response.rect, Some(Align::Center));
+                self.scroll_focus = false;
+            }
         }
     }
     fn detail_page(&mut self, ui: &mut Ui, item: Item) {
@@ -986,6 +1187,21 @@ impl eframe::App for Cabin {
         if self.screenshot.is_some() {
             ctx.request_repaint_after(Duration::from_millis(100));
         }
+        let controller_enabled =
+            ctx.input(|i| i.viewport().focused.unwrap_or(false)) && self.children.is_empty();
+        self.gamepad.set_enabled(controller_enabled);
+        while let Ok(message) = self.gamepad.events.try_recv() {
+            match message {
+                gamepad::Message::Connected(name) => self.controller = name,
+                gamepad::Message::Error(e) => eprintln!("Controller unavailable: {e}"),
+                gamepad::Message::Action(action)
+                    if controller_enabled && self.children.is_empty() =>
+                {
+                    self.controller_action(ctx, action)
+                }
+                _ => {}
+            }
+        }
         if ctx.input(|i| i.modifiers.command && i.key_pressed(Key::F)) {
             self.focus_search = true;
         }
@@ -1077,6 +1293,7 @@ impl eframe::App for Cabin {
         if ctx.input(|i| i.pointer.any_pressed()) {
             self.focus_ring = false;
         }
+        let had_children = !self.children.is_empty();
         let mut errors = Vec::new();
         self.children
             .retain_mut(|(name, child)| match child.try_wait() {
@@ -1095,6 +1312,10 @@ impl eframe::App for Cabin {
                     false
                 }
             });
+        if had_children && self.children.is_empty() {
+            ctx.send_viewport_cmd(ViewportCommand::Focus);
+            self.focus_ring = true;
+        }
         for e in errors {
             self.notice = Some((e, true, Instant::now()));
         }
@@ -1122,34 +1343,49 @@ impl eframe::App for Cabin {
                 .show(ctx, |ui| {
                     let key_width = ((ui.available_width() - 9. * 6.) / 10.).min(70.);
                     ui.spacing_mut().item_spacing = vec2(6., 6.);
+                    let mut index = 0;
                     for row in ["qwertyuiop", "asdfghjkl", "zxcvbnm"] {
                         ui.horizontal(|ui| {
                             for key in row.chars() {
+                                let selected = self.focus_ring
+                                    && self.controller.is_some()
+                                    && self.keyboard_key == index;
                                 if ui
-                                    .add_sized([key_width, 48.], Button::new(key.to_string()))
+                                    .add_sized(
+                                        [key_width, 48.],
+                                        Button::new(key.to_string()).stroke(Stroke::new(
+                                            2.0_f32,
+                                            if selected { self.accent } else { BORDER },
+                                        )),
+                                    )
                                     .clicked()
                                 {
-                                    self.query.push(key);
-                                    self.detail = None;
+                                    self.keyboard_press(index);
                                 }
+                                index += 1;
                             }
                         });
                     }
-                    ui.horizontal(|ui| {
-                        if ui.add_sized([100., 48.], Button::new("Clear")).clicked() {
-                            self.query.clear();
-                        }
-                        if ui
-                            .add_sized([key_width * 3., 48.], Button::new("Space"))
-                            .clicked()
+                    ui.horizontal_wrapped(|ui| {
+                        for (offset, label) in
+                            ["Clear", "Space", "Delete", "Done"].iter().enumerate()
                         {
-                            self.query.push(' ');
-                        }
-                        if ui.add_sized([100., 48.], Button::new("Delete")).clicked() {
-                            self.query.pop();
-                        }
-                        if ui.add_sized([100., 48.], Button::new("Done")).clicked() {
-                            self.touch_keyboard = false;
+                            let index = 26 + offset;
+                            let selected = self.focus_ring
+                                && self.controller.is_some()
+                                && self.keyboard_key == index;
+                            if ui
+                                .add_sized(
+                                    [100., 48.],
+                                    Button::new(*label).stroke(Stroke::new(
+                                        2.0_f32,
+                                        if selected { self.accent } else { BORDER },
+                                    )),
+                                )
+                                .clicked()
+                            {
+                                self.keyboard_press(index);
+                            }
                         }
                     });
                 });
@@ -1159,6 +1395,7 @@ impl eframe::App for Cabin {
             ui.add_space(24.);
             if let Some((text,error,_))=&self.notice{let t=text.clone();let error=*error;Frame::new().fill(if error{Color32::from_rgb(68,37,36)}else{Color32::from_rgb(26,53,48)}).corner_radius(8).inner_margin(10).show(ui,|ui|{ui.horizontal_wrapped(|ui|{ui.label(&t);if ui.small_button("Dismiss").clicked(){self.notice=None;}});});ui.add_space(10.);}
             ScrollArea::vertical().id_salt(("content",self.section.clone(),self.detail.clone())).auto_shrink([false,false]).show(ui,|ui|{
+                if self.controller_scroll != 0. {ui.scroll_with_delta(vec2(0.,self.controller_scroll));self.controller_scroll=0.;}
                 if let Some(item)=self.items.iter().find(|i|Some(&i.id)==self.detail.as_ref()).cloned(){self.detail_page(ui,item);return;}
                 if self.section=="atari" {ui.checkbox(&mut self.show_unverified,"Show unverified games");ui.label(RichText::new("Verified means a game screen was reached; it is not a complete playthrough.").size(16.).color(MUTED));ui.add_space(12.);}
                 if self.section=="listen" {
@@ -1177,7 +1414,7 @@ impl eframe::App for Cabin {
                     "watch"=>("A window into another world.","Space, history, and the stories behind extraordinary events."),
                     "puzzles"=>("Just one more puzzle.","Forty little challenges. No accounts, no timers, no connection needed."),
                     "atari"=>("Back to the good stuff.","Your Atari ST collection, with the familiar games and a few new discoveries."),
-                    "read"=>("The long way through a page.","Islands, sailing, space and retro computing. Complete issues, saved locally."),
+                    "read"=>("The long way through a page.","Roman life, Swedish history, space and retro computing. Saved locally."),
                     "travel"=>("Somewhere you haven’t been.","Seas, islands, beaches and mountains. The Americas, Asia and the Caribbean."),
                     "favorites"=>("Your personal shortlist.","The things you have saved for later."),
                     "recent"=>("Pick up where you left off.","Recently opened. Videos remember their playback position."),
@@ -1190,7 +1427,7 @@ impl eframe::App for Cabin {
                     if ui.available_width()>850. {if let Some(item)=ordered.first(){self.hero(ui,item.clone());ui.add_space(21.);}}
                     let travel:Vec<_>=ordered.iter().filter(|i|self.travel_enabled && i.tag=="Travel" && !self.progress.unfinished(i)).cloned().collect();
                     if !travel.is_empty(){ui.heading("Your Travel shelf");self.grid(ui,travel);ui.add_space(22.);}
-                    ui.horizontal_wrapped(|ui|{ui.label(RichText::new("Packed for the journey").size(21.).strong());ui.with_layout(Layout::right_to_left(Align::Center),|ui|{ui.label(RichText::new(format!("{} films  ·  {} puzzles  ·  {} magazines",self.items.iter().filter(|i|i.kind=="watch").count(),self.items.iter().filter(|i|i.kind=="puzzles").count(),self.items.iter().filter(|i|i.kind=="read").count())).size(16.).color(MUTED));});});ui.add_space(9.);
+                    ui.horizontal_wrapped(|ui|{ui.label(RichText::new("Packed for the journey").size(21.).strong());ui.with_layout(Layout::right_to_left(Align::Center),|ui|{ui.label(RichText::new(format!("{} films  ·  {} puzzles  ·  {} reads",self.items.iter().filter(|i|i.kind=="watch").count(),self.items.iter().filter(|i|i.kind=="puzzles").count(),self.items.iter().filter(|i|i.kind=="read").count())).size(16.).color(MUTED));});});ui.add_space(9.);
                     let items=ordered.into_iter().filter(|i|!self.progress.unfinished(i) && !(self.travel_enabled && i.tag=="Travel")).take(12).collect();self.grid(ui,items);
                 }else{
                     let mut items:Vec<Item>=self.items.iter().filter(|i|visible_game(i,self.show_unverified)&&matches(i,&self.query)&&match self.section.as_str(){"home"=>true,"travel"=>i.tag=="Travel","favorites"=>self.history.favorites.contains(&i.id),"recent"=>self.history.recent.contains(&i.id),s=>i.kind==s}).cloned().collect();
