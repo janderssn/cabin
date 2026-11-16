@@ -859,6 +859,8 @@ impl Cabin {
                             )
                             .clicked()
                         {
+                            // Leaving for another section also leaves the magazine.
+                            self.close_reader();
                             self.section = id.into();
                             self.detail = None;
                             self.query.clear();
