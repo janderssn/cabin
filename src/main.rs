@@ -1,4 +1,5 @@
 mod library;
+mod progress;
 mod validation;
 use eframe::egui::*;
 use library::*;
@@ -63,6 +64,7 @@ fn desktop_fullscreen(action: &str) -> bool {
 }
 struct Cabin {
     items: Vec<Item>,
+    progress: progress::Progress,
     history: History,
     section: String,
     query: String,
@@ -142,6 +144,7 @@ impl Cabin {
             pending: HashSet::new(),
             image_jobs,
             image_results,
+            progress: progress::Progress::new(&items),
             items,
             history: load_history(),
             section,
@@ -372,6 +375,21 @@ impl Cabin {
                 self.accent,
             );
         }
+        if item.seconds > 0 && self.progress.seconds(item) > 0. {
+            let bar = Rect::from_min_size(
+                pos2(rect.min.x + 12., rect.max.y - 7.),
+                vec2(rect.width() - 24., 4.),
+            );
+            ui.painter().rect_filled(bar, 2, BORDER);
+            let fill = Rect::from_min_size(
+                bar.min,
+                vec2(
+                    bar.width() * (self.progress.seconds(item) / item.seconds as f64) as f32,
+                    bar.height(),
+                ),
+            );
+            ui.painter().rect_filled(fill, 2, self.accent);
+        }
         if response.clicked() {
             self.detail = Some(item.id.clone());
             self.gallery_index = 0;
@@ -536,6 +554,18 @@ impl Cabin {
                     .size(16.)
                     .color(Color32::from_rgb(128, 198, 176)),
             );
+            if item.seconds > 0 && this.progress.seconds(&item) > 0. {
+                let position = this.progress.seconds(&item);
+                ui.add(
+                    ProgressBar::new((position / item.seconds as f64) as f32)
+                        .desired_height(12.)
+                        .text(format!(
+                            "{} min of {} min",
+                            position as u64 / 60,
+                            item.seconds / 60
+                        )),
+                );
+            }
             ui.add_space(12.);
             ui.label(
                 RichText::new(&item.description)
@@ -698,6 +728,7 @@ impl eframe::App for Cabin {
         if self.theme_check.elapsed() > Duration::from_secs(2) {
             self.accent = accent();
             self.theme_check = Instant::now();
+            self.progress.refresh();
         }
         let events = ctx.input(|i| i.events.clone());
         for event in events {
@@ -839,7 +870,7 @@ impl eframe::App for Cabin {
                 if ui.available_width() > 650. {ui.label(RichText::new("CABIN / OFFLINE").size(20.).color(MUTED).strong());}
                 ui.with_layout(Layout::right_to_left(Align::Center),|ui|{
                     if ui.button("Keys").clicked(){self.touch_keyboard=!self.touch_keyboard;}
-                    if ui.button("Reload").on_hover_text("Reload local library").clicked(){match load(){Ok(i)=>self.items=i,Err(e)=>self.notice=Some((e,true,Instant::now()))}}
+                    if ui.button("Reload").on_hover_text("Reload local library").clicked(){match load(){Ok(i)=>{self.progress=progress::Progress::new(&i);self.items=i;},Err(e)=>self.notice=Some((e,true,Instant::now()))}}
                     let r=ui.add_sized([ui.available_width().min(380.),54.],TextEdit::singleline(&mut self.query).hint_text("Search your collection…").id(Id::new("search")));
                     if self.focus_search{r.request_focus();self.focus_search=false;}
                 });
@@ -859,6 +890,8 @@ impl eframe::App for Cabin {
                     _=>("Settle in. Switch off.","A good flight starts with something worth getting lost in."),};
                 ui.label(RichText::new(title).size(31.).strong());ui.label(RichText::new(sub).color(MUTED).size(16.));ui.add_space(20.);
                 if self.section=="home"&&self.query.is_empty(){
+                    let continuing=self.progress.continuing(&self.items);
+                    if !continuing.is_empty(){ui.heading("Continue watching");self.grid(ui,continuing);ui.add_space(22.);}
                     if ui.available_width() > 850. {self.hero(ui);ui.add_space(21.);}
                     ui.horizontal_wrapped(|ui|{ui.label(RichText::new("Packed for the journey").size(21.).strong());ui.with_layout(Layout::right_to_left(Align::Center),|ui|{ui.label(RichText::new(format!("{} films  ·  {} puzzles  ·  {} magazines",self.items.iter().filter(|i|i.kind=="watch").count(),self.items.iter().filter(|i|i.kind=="puzzles").count(),self.items.iter().filter(|i|i.kind=="read").count())).size(16.).color(MUTED));});});ui.add_space(9.);
                     let ids=["puzzle-net","mag-air-space-jul-aug-2025","atari-laser-squad","video-WM8kjDF0IJU","puzzle-pattern","mag-st-review-11","video-Bd8_vO5zrjo","puzzle-bridges","atari-stunt-car-racer"];
