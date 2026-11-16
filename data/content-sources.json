@@ -1,0 +1,500 @@
+[
+  {
+    "id": "atari-armour-geddon",
+    "title": "Armour-Geddon",
+    "kind": "atari",
+    "source": "https://www.atarilegend.com/games/armour-geddon"
+  },
+  {
+    "id": "atari-atomino",
+    "title": "Atomino",
+    "kind": "atari",
+    "source": "https://www.atarilegend.com/games/atomino"
+  },
+  {
+    "id": "atari-battletech",
+    "title": "BattleTech: The Crescent Hawk's Inception",
+    "kind": "atari",
+    "source": "https://www.atarilegend.com/games/battletech"
+  },
+  {
+    "id": "atari-breach-ii",
+    "title": "Breach II",
+    "kind": "atari",
+    "source": "https://www.atarilegend.com/games/breach-2"
+  },
+  {
+    "id": "atari-conflict",
+    "title": "Conflict: Middle East Political Simulator",
+    "kind": "atari",
+    "source": "https://www.atarilegend.com/games/conflict-the-middle-east-political-simulator"
+  },
+  {
+    "id": "atari-dogs-of-war",
+    "title": "Dogs of War",
+    "kind": "atari",
+    "source": "https://www.atarilegend.com/games/dogs-of-war"
+  },
+  {
+    "id": "atari-dungeon-master",
+    "title": "Dungeon Master",
+    "kind": "atari",
+    "source": "https://www.atarilegend.com/games/dungeon-master"
+  },
+  {
+    "id": "atari-hunter",
+    "title": "Hunter",
+    "kind": "atari",
+    "source": "https://www.atarilegend.com/games/hunter"
+  },
+  {
+    "id": "atari-klax",
+    "title": "Klax",
+    "kind": "atari",
+    "source": "https://www.atarilegend.com/games/klax"
+  },
+  {
+    "id": "atari-laser-squad",
+    "title": "Laser Squad",
+    "kind": "atari",
+    "source": "https://www.atarilegend.com/games/laser-squad"
+  },
+  {
+    "id": "atari-lemmings",
+    "title": "Lemmings",
+    "kind": "atari",
+    "source": "https://www.atarilegend.com/games/lemmings"
+  },
+  {
+    "id": "atari-loopz",
+    "title": "Loopz",
+    "kind": "atari",
+    "source": "https://www.atarilegend.com/games/loopz"
+  },
+  {
+    "id": "atari-lords-of-chaos",
+    "title": "Lords of Chaos",
+    "kind": "atari",
+    "source": "https://www.atarilegend.com/games/lords-of-chaos"
+  },
+  {
+    "id": "atari-midwinter",
+    "title": "Midwinter",
+    "kind": "atari",
+    "source": "https://www.atarilegend.com/games/midwinter"
+  },
+  {
+    "id": "atari-midwinter-ii",
+    "title": "Midwinter II: Flames of Freedom",
+    "kind": "atari",
+    "source": "https://www.atarilegend.com/games/midwinter-2-flames-of-freedom"
+  },
+  {
+    "id": "atari-phantasie-iii",
+    "title": "Phantasie III: The Wrath of Nikademus",
+    "kind": "atari",
+    "source": "https://www.atarilegend.com/games/phantasie-iii-the-wrath-of-nikademus"
+  },
+  {
+    "id": "atari-puzznic",
+    "title": "Puzznic",
+    "kind": "atari",
+    "source": "https://www.atarilegend.com/games/puzznic"
+  },
+  {
+    "id": "atari-sabre-team",
+    "title": "Sabre Team",
+    "kind": "atari",
+    "source": "https://www.atarilegend.com/games/sabre-team"
+  },
+  {
+    "id": "atari-space-crusade",
+    "title": "Space Crusade",
+    "kind": "atari",
+    "source": "https://www.atarilegend.com/games/space-crusade"
+  },
+  {
+    "id": "atari-space-crusade-voyage-beyond",
+    "title": "Space Crusade: The Voyage Beyond",
+    "kind": "atari",
+    "source": "https://www.atarilegend.com/games/space-crusade-the-voyage-beyond"
+  },
+  {
+    "id": "atari-starflight",
+    "title": "Starflight",
+    "kind": "atari",
+    "source": "https://www.atarilegend.com/games/starflight"
+  },
+  {
+    "id": "atari-stunt-car-racer",
+    "title": "Stunt Car Racer",
+    "kind": "atari",
+    "source": "https://www.atarilegend.com/games/stunt-car-racer"
+  },
+  {
+    "id": "atari-sundog",
+    "title": "SunDog: Frozen Legacy",
+    "kind": "atari",
+    "source": "https://www.atarilegend.com/games/sundog-frozen-legacy"
+  },
+  {
+    "id": "atari-super-cars-ii",
+    "title": "Super Cars II",
+    "kind": "atari",
+    "source": "https://www.atarilegend.com/games/super-cars-2"
+  },
+  {
+    "id": "atari-supremacy",
+    "title": "Supremacy",
+    "kind": "atari",
+    "source": "https://www.atarilegend.com/games/supremacy"
+  },
+  {
+    "id": "atari-tetris",
+    "title": "Tetris",
+    "kind": "atari",
+    "source": "https://www.atarilegend.com/games/tetris"
+  },
+  {
+    "id": "puzzle-blackbox",
+    "title": "Blackbox",
+    "kind": "puzzles",
+    "source": "https://www.chiark.greenend.org.uk/~sgtatham/puzzles/blackbox.html"
+  },
+  {
+    "id": "puzzle-bridges",
+    "title": "Bridges",
+    "kind": "puzzles",
+    "source": "https://www.chiark.greenend.org.uk/~sgtatham/puzzles/bridges.html"
+  },
+  {
+    "id": "puzzle-cube",
+    "title": "Cube",
+    "kind": "puzzles",
+    "source": "https://www.chiark.greenend.org.uk/~sgtatham/puzzles/cube.html"
+  },
+  {
+    "id": "puzzle-dominosa",
+    "title": "Dominosa",
+    "kind": "puzzles",
+    "source": "https://www.chiark.greenend.org.uk/~sgtatham/puzzles/dominosa.html"
+  },
+  {
+    "id": "puzzle-fifteen",
+    "title": "Fifteen",
+    "kind": "puzzles",
+    "source": "https://www.chiark.greenend.org.uk/~sgtatham/puzzles/fifteen.html"
+  },
+  {
+    "id": "puzzle-filling",
+    "title": "Filling",
+    "kind": "puzzles",
+    "source": "https://www.chiark.greenend.org.uk/~sgtatham/puzzles/filling.html"
+  },
+  {
+    "id": "puzzle-flip",
+    "title": "Flip",
+    "kind": "puzzles",
+    "source": "https://www.chiark.greenend.org.uk/~sgtatham/puzzles/flip.html"
+  },
+  {
+    "id": "puzzle-flood",
+    "title": "Flood",
+    "kind": "puzzles",
+    "source": "https://www.chiark.greenend.org.uk/~sgtatham/puzzles/flood.html"
+  },
+  {
+    "id": "puzzle-galaxies",
+    "title": "Galaxies",
+    "kind": "puzzles",
+    "source": "https://www.chiark.greenend.org.uk/~sgtatham/puzzles/galaxies.html"
+  },
+  {
+    "id": "puzzle-guess",
+    "title": "Guess",
+    "kind": "puzzles",
+    "source": "https://www.chiark.greenend.org.uk/~sgtatham/puzzles/guess.html"
+  },
+  {
+    "id": "puzzle-inertia",
+    "title": "Inertia",
+    "kind": "puzzles",
+    "source": "https://www.chiark.greenend.org.uk/~sgtatham/puzzles/inertia.html"
+  },
+  {
+    "id": "puzzle-keen",
+    "title": "Keen",
+    "kind": "puzzles",
+    "source": "https://www.chiark.greenend.org.uk/~sgtatham/puzzles/keen.html"
+  },
+  {
+    "id": "puzzle-lightup",
+    "title": "Light Up",
+    "kind": "puzzles",
+    "source": "https://www.chiark.greenend.org.uk/~sgtatham/puzzles/lightup.html"
+  },
+  {
+    "id": "puzzle-loopy",
+    "title": "Loopy",
+    "kind": "puzzles",
+    "source": "https://www.chiark.greenend.org.uk/~sgtatham/puzzles/loopy.html"
+  },
+  {
+    "id": "puzzle-magnets",
+    "title": "Magnets",
+    "kind": "puzzles",
+    "source": "https://www.chiark.greenend.org.uk/~sgtatham/puzzles/magnets.html"
+  },
+  {
+    "id": "puzzle-map",
+    "title": "Map",
+    "kind": "puzzles",
+    "source": "https://www.chiark.greenend.org.uk/~sgtatham/puzzles/map.html"
+  },
+  {
+    "id": "puzzle-mines",
+    "title": "Mines",
+    "kind": "puzzles",
+    "source": "https://www.chiark.greenend.org.uk/~sgtatham/puzzles/mines.html"
+  },
+  {
+    "id": "puzzle-mosaic",
+    "title": "Mosaic",
+    "kind": "puzzles",
+    "source": "https://www.chiark.greenend.org.uk/~sgtatham/puzzles/mosaic.html"
+  },
+  {
+    "id": "puzzle-net",
+    "title": "Net",
+    "kind": "puzzles",
+    "source": "https://www.chiark.greenend.org.uk/~sgtatham/puzzles/net.html"
+  },
+  {
+    "id": "puzzle-netslide",
+    "title": "Netslide",
+    "kind": "puzzles",
+    "source": "https://www.chiark.greenend.org.uk/~sgtatham/puzzles/netslide.html"
+  },
+  {
+    "id": "puzzle-palisade",
+    "title": "Palisade",
+    "kind": "puzzles",
+    "source": "https://www.chiark.greenend.org.uk/~sgtatham/puzzles/palisade.html"
+  },
+  {
+    "id": "puzzle-pattern",
+    "title": "Pattern",
+    "kind": "puzzles",
+    "source": "https://www.chiark.greenend.org.uk/~sgtatham/puzzles/pattern.html"
+  },
+  {
+    "id": "puzzle-pearl",
+    "title": "Pearl",
+    "kind": "puzzles",
+    "source": "https://www.chiark.greenend.org.uk/~sgtatham/puzzles/pearl.html"
+  },
+  {
+    "id": "puzzle-pegs",
+    "title": "Pegs",
+    "kind": "puzzles",
+    "source": "https://www.chiark.greenend.org.uk/~sgtatham/puzzles/pegs.html"
+  },
+  {
+    "id": "puzzle-range",
+    "title": "Range",
+    "kind": "puzzles",
+    "source": "https://www.chiark.greenend.org.uk/~sgtatham/puzzles/range.html"
+  },
+  {
+    "id": "puzzle-rect",
+    "title": "Rect",
+    "kind": "puzzles",
+    "source": "https://www.chiark.greenend.org.uk/~sgtatham/puzzles/rect.html"
+  },
+  {
+    "id": "puzzle-samegame",
+    "title": "Same Game",
+    "kind": "puzzles",
+    "source": "https://www.chiark.greenend.org.uk/~sgtatham/puzzles/samegame.html"
+  },
+  {
+    "id": "puzzle-signpost",
+    "title": "Signpost",
+    "kind": "puzzles",
+    "source": "https://www.chiark.greenend.org.uk/~sgtatham/puzzles/signpost.html"
+  },
+  {
+    "id": "puzzle-singles",
+    "title": "Singles",
+    "kind": "puzzles",
+    "source": "https://www.chiark.greenend.org.uk/~sgtatham/puzzles/singles.html"
+  },
+  {
+    "id": "puzzle-sixteen",
+    "title": "Sixteen",
+    "kind": "puzzles",
+    "source": "https://www.chiark.greenend.org.uk/~sgtatham/puzzles/sixteen.html"
+  },
+  {
+    "id": "puzzle-slant",
+    "title": "Slant",
+    "kind": "puzzles",
+    "source": "https://www.chiark.greenend.org.uk/~sgtatham/puzzles/slant.html"
+  },
+  {
+    "id": "puzzle-solo",
+    "title": "Sudoku",
+    "kind": "puzzles",
+    "source": "https://www.chiark.greenend.org.uk/~sgtatham/puzzles/solo.html"
+  },
+  {
+    "id": "puzzle-tents",
+    "title": "Tents",
+    "kind": "puzzles",
+    "source": "https://www.chiark.greenend.org.uk/~sgtatham/puzzles/tents.html"
+  },
+  {
+    "id": "puzzle-towers",
+    "title": "Towers",
+    "kind": "puzzles",
+    "source": "https://www.chiark.greenend.org.uk/~sgtatham/puzzles/towers.html"
+  },
+  {
+    "id": "puzzle-tracks",
+    "title": "Tracks",
+    "kind": "puzzles",
+    "source": "https://www.chiark.greenend.org.uk/~sgtatham/puzzles/tracks.html"
+  },
+  {
+    "id": "puzzle-twiddle",
+    "title": "Twiddle",
+    "kind": "puzzles",
+    "source": "https://www.chiark.greenend.org.uk/~sgtatham/puzzles/twiddle.html"
+  },
+  {
+    "id": "puzzle-undead",
+    "title": "Undead",
+    "kind": "puzzles",
+    "source": "https://www.chiark.greenend.org.uk/~sgtatham/puzzles/undead.html"
+  },
+  {
+    "id": "puzzle-unequal",
+    "title": "Unequal",
+    "kind": "puzzles",
+    "source": "https://www.chiark.greenend.org.uk/~sgtatham/puzzles/unequal.html"
+  },
+  {
+    "id": "puzzle-unruly",
+    "title": "Unruly",
+    "kind": "puzzles",
+    "source": "https://www.chiark.greenend.org.uk/~sgtatham/puzzles/unruly.html"
+  },
+  {
+    "id": "puzzle-untangle",
+    "title": "Untangle",
+    "kind": "puzzles",
+    "source": "https://www.chiark.greenend.org.uk/~sgtatham/puzzles/untangle.html"
+  },
+  {
+    "id": "mag-air-space-jul-aug-2025",
+    "title": "Air & Space Forces",
+    "kind": "read",
+    "source": "https://www.airandspaceforces.com/app/uploads/2025/07/JulyAugust2025_Fullissue.pdf"
+  },
+  {
+    "id": "mag-air-space-nov-dec-2025",
+    "title": "Air & Space Forces",
+    "kind": "read",
+    "source": "https://www.airandspaceforces.com/app/uploads/2025/11/NovDec_2025_Full_Issue.pdf"
+  },
+  {
+    "id": "mag-st-review-11",
+    "title": "Atari ST Review",
+    "kind": "read",
+    "source": "https://www.atarimania.com/mags/pdf/atari_st_review-issue_11.pdf"
+  },
+  {
+    "id": "mag-nasa-history-summer-2025",
+    "title": "NASA History",
+    "kind": "read",
+    "source": "https://www.nasa.gov/wp-content/uploads/2025/06/newsnotes-42-2.pdf"
+  },
+  {
+    "id": "mag-st-format-80",
+    "title": "ST Format",
+    "kind": "read",
+    "source": "https://www.atarimania.com/mags/pdf/atari-st-format-issue-080.pdf"
+  },
+  {
+    "id": "video-WM8kjDF0IJU",
+    "title": "Apollo 13: Home Safe",
+    "kind": "watch",
+    "source": "https://www.youtube.com/watch?v=WM8kjDF0IJU"
+  },
+  {
+    "id": "video-BXjydKPcX60",
+    "title": "Midway: Hiryu’s Counterstrike",
+    "kind": "watch",
+    "source": "https://www.youtube.com/watch?v=BXjydKPcX60"
+  },
+  {
+    "id": "video-WHO6xrSF7Sw",
+    "title": "Midway: The American Perspective",
+    "kind": "watch",
+    "source": "https://www.youtube.com/watch?v=WHO6xrSF7Sw"
+  },
+  {
+    "id": "video-Bd8_vO5zrjo",
+    "title": "Midway: The Japanese Perspective",
+    "kind": "watch",
+    "source": "https://www.youtube.com/watch?v=Bd8_vO5zrjo"
+  },
+  {
+    "id": "video-Qj_62FWfH78",
+    "title": "The Stuff of Dreams",
+    "kind": "watch",
+    "source": "https://www.youtube.com/watch?v=Qj_62FWfH78"
+  },
+  {
+    "id": "video--dAB72gsIiE",
+    "title": "The Vietnam War",
+    "kind": "watch",
+    "source": "https://www.youtube.com/watch?v=-dAB72gsIiE"
+  },
+  {
+    "id": "mag-hokkaido-tokachi",
+    "title": "Slow Travel Hokkaido",
+    "kind": "read",
+    "source": "https://slow-life-hokkaido.com/cms/wp-content/uploads/2024/11/BehindTheGoodTasteHokkaidoTokachi.pdf"
+  },
+  {
+    "id": "mag-hokkaido-vol5",
+    "title": "Slow Life Hokkaido",
+    "kind": "read",
+    "source": "https://slow-life-hokkaido.com/cms/wp-content/uploads/2019/09/Slow-Life-HOKKAIDO-vol5.pdf"
+  },
+  {
+    "id": "mag-travel-magazine-sep2024",
+    "title": "The Travel Magazine",
+    "kind": "read",
+    "source": "https://bvtravel.imgix.net/travel-magazine/travelmag092024.pdf"
+  },
+  {
+    "id": "video-Qe5T3Jxhem0",
+    "title": "Lisbon",
+    "kind": "watch",
+    "source": "https://www.youtube.com/watch?v=Qe5T3Jxhem0"
+  },
+  {
+    "id": "video-0IvZOZtjMYM",
+    "title": "Portugal’s Heartland",
+    "kind": "watch",
+    "source": "https://www.youtube.com/watch?v=0IvZOZtjMYM"
+  },
+  {
+    "id": "video-npGwq_ZxVKk",
+    "title": "A Train Ride into Japan’s Past",
+    "kind": "watch",
+    "source": "https://www.youtube.com/watch?v=npGwq_ZxVKk"
+  }
+]

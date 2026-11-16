@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+set -euo pipefail
+cd "$(dirname "$0")/.."
+"${CARGO:-$HOME/.cargo/bin/cargo}" build --release --locked --offline
+install -Dm755 target/release/cabin "$HOME/.local/bin/cabin"
+install -Dm644 assets/cabin.svg "$HOME/.local/share/icons/hicolor/scalable/apps/cabin.svg"
+mkdir -p "$HOME/.local/share/applications"
+cat > "$HOME/.local/share/applications/cabin.desktop" <<DESKTOP
+[Desktop Entry]
+Type=Application
+Name=Cabin
+Comment=Your offline flight entertainment collection
+Exec="$HOME/.local/bin/cabin"
+Icon=cabin
+Terminal=false
+Categories=Game;AudioVideo;Viewer;
+Keywords=flight;offline;travel;games;magazines;documentaries;
+StartupWMClass=cabin
+DESKTOP
+command -v update-desktop-database >/dev/null && update-desktop-database "$HOME/.local/share/applications" || true
