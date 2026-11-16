@@ -527,6 +527,9 @@ impl Cabin {
             );
             ui.label(RichText::new(&item.title).size(29.).strong());
             ui.label(RichText::new(&item.subtitle).color(MUTED));
+            if item.kind == "watch" && item.subtitles {
+                ui.label(RichText::new("Subtitles").color(this.accent).strong());
+            }
             ui.add_space(10.);
             ui.label(
                 RichText::new(format!("{}  ·  Available offline", item.meta))

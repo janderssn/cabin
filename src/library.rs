@@ -24,6 +24,7 @@ pub struct Item {
     pub seconds: u64,
     pub pages: u64,
     pub verified: bool,
+    pub subtitles: bool,
     pub notes: String,
     pub folder: String,
     pub disks: Vec<String>,

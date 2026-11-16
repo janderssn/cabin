@@ -1,3 +1,4 @@
+from media_metadata import has_subtitles
 #!/usr/bin/env python3
 """Build Cabin's offline catalog; keep sources and originals intact."""
 from pathlib import Path
@@ -45,7 +46,7 @@ for v in json.loads((vroot/'catalog.json').read_text()):
   target=ASSETS/(vid+f'-{i}.jpg')
   if not target.exists():subprocess.run(['ffmpeg','-v','error','-ss',str(t),'-i',str(p),'-frames:v','1','-vf','scale=960:-1','-y',str(target)],check=True)
   gallery.append(str(target))
- items.append(dict(id='video-'+vid,title=title,subtitle=sub,kind='watch',tag='Space' if vid in ('WM8kjDF0IJU','Qj_62FWfH78') else ('Vietnam' if vid.startswith('-') else 'WWII'),description=desc,path=str(p),image=gallery[0],gallery=gallery,source=v['source'],meta=f'{v["seconds"]//3600}h {v["seconds"]%3600//60:02}m' if v['seconds']>=3600 else f'{v["seconds"]//60} min',bytes=v['bytes'],seconds=v['seconds'],verified=True))
+ items.append(dict(id='video-'+vid,title=title,subtitle=sub,kind='watch',tag='Space' if vid in ('WM8kjDF0IJU','Qj_62FWfH78') else ('Vietnam' if vid.startswith('-') else 'WWII'),description=desc,path=str(p),image=gallery[0],gallery=gallery,source=v['source'],meta=f'{v["seconds"]//3600}h {v["seconds"]%3600//60:02}m' if v['seconds']>=3600 else f'{v["seconds"]//60} min',bytes=v['bytes'],seconds=v['seconds'],verified=True,subtitles=has_subtitles(p)))
 # Official puzzle screenshots; executable names come from the installed package.
 puzzle_desc={'net':'Rotate the tiles to reconnect every part of the network. Small boards turn into surprisingly satisfying challenges.','pattern':'Use the row and column clues to reveal a hidden pixel picture. A quiet, absorbing nonogram puzzle.','bridges':'Connect numbered islands with bridges without crossing them. Clean rules, wonderfully tricky deductions.','loopy':'Draw a single closed loop around a grid of clues. Every line is a small deduction.','lightup':'Place bulbs to illuminate every white square without bulbs lighting one another.','samegame':'Clear groups of matching blocks and plan ahead for a high score.','solo':'Classic Sudoku with adjustable difficulty and a fresh board whenever you want.','flood':'Fill the entire board with one colour in as few moves as possible.'}
 def native(p):

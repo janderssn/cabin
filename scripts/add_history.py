@@ -1,3 +1,4 @@
+from media_metadata import has_subtitles
 from pathlib import Path
 import json, subprocess, zipfile, re, shutil
 from html import unescape
@@ -32,5 +33,8 @@ for vid,title,sub,desc in [('Zu9EWhKzsVg','Rome: Origins of an Empire','Mary Bea
   out=assets/(vid+'-poster.jpg');subprocess.run(['ffmpeg','-v','error','-i',str(poster),'-frames:v','1','-y',str(out)],check=True);gallery.insert(0,str(out))
  byid['video-'+vid]=dict(id='video-'+vid,title=title,subtitle=sub,kind='watch',tag='Swedish history' if vid=='Phqk_vXby1w' else 'Roman history',description=desc,path=str(path),image=gallery[0],gallery=gallery,source=metadata['webpage_url'],meta=f'{round(duration)//60} min',seconds=round(duration),bytes=path.stat().st_size,verified=True)
  print('Verified film',title,flush=True)
-items=list(byid.values());(root/'library.json.tmp').write_text(json.dumps(items,indent=2,ensure_ascii=False)+'\n');(root/'library.json.tmp').replace(root/'library.json');(project/'data/library.json').write_text(json.dumps(items,indent=2,ensure_ascii=False)+'\n');(project/'data/content-sources.json').write_text(json.dumps([dict(id=i['id'],title=i['title'],kind=i['kind'],source=i['source']) for i in items],indent=2,ensure_ascii=False)+'\n')
+items=list(byid.values())
+for item in items:
+ if item['kind']=='watch':item['subtitles']=has_subtitles(item['path'])
+(root/'library.json.tmp').write_text(json.dumps(items,indent=2,ensure_ascii=False)+'\n');(root/'library.json.tmp').replace(root/'library.json');(project/'data/library.json').write_text(json.dumps(items,indent=2,ensure_ascii=False)+'\n');(project/'data/content-sources.json').write_text(json.dumps([dict(id=i['id'],title=i['title'],kind=i['kind'],source=i['source']) for i in items],indent=2,ensure_ascii=False)+'\n')
 films=[i for i in items if i['kind']=='watch'];(vroot/'catalog.json').write_text(json.dumps([dict(title=i['title'],file=i['path'],seconds=i['seconds'],source=i['source'],bytes=i['bytes']) for i in films],indent=2));(vroot/'flight-playlist.m3u').write_text('#EXTM3U\n'+'\n'.join(i['path'] for i in films)+'\n');print('Total',len(items),flush=True)

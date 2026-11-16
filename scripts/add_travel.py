@@ -1,3 +1,4 @@
+from media_metadata import has_subtitles
 """Prepare the curated nature-travel shelf. Downloads magazines, uses local films.
 Run yt-dlp on videos/flight/documentaries/nature-travel-sources.txt first.
 Original superseded downloads are preserved but removed from the active catalogs.
@@ -84,6 +85,8 @@ def prepare_video(entry):
 run_sources(picks['videos'], prepare_video, skipped)
 
 items = list(byid.values())
+for item in items:
+    if item['kind']=='watch':item['subtitles']=has_subtitles(item['path'])
 temporary = root / 'library.json.tmp'
 temporary.write_text(json.dumps(items, indent=2, ensure_ascii=False) + '\n')
 temporary.replace(root / 'library.json')
