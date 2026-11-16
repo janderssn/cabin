@@ -1,3 +1,6 @@
+import sys
+from audio_library import scan as scan_audio, main as import_audio
+if "--audio-only" in sys.argv:raise SystemExit(import_audio())
 from media_metadata import has_subtitles
 #!/usr/bin/env python3
 """Build Cabin's offline catalog; keep sources and originals intact."""
@@ -41,7 +44,7 @@ video_copy={
  'WHO6xrSF7Sw':('Midway: The American Perspective','Montemayor · Part 3 of 3','The American decisions and strategic consequences that complete the Midway trilogy.'),
  '-dAB72gsIiE':('The Vietnam War','Free Documentary – History · Complete series','A long-form documentary collection covering the conflict, its turning points, and its aftermath.')}
 for v in json.loads((vroot/'catalog.json').read_text()):
- vid=re.search(r'\[([^\]]+)\]',v['file'])[1];title,sub,desc=video_copy[vid];p=vroot/v['file'];gallery=[]
+ vid=re.search(r'\[([^\]]+)\]',v['file'])[1];title,sub,desc=video_copy.get(vid,(v['title'],'Offline documentary','A documentary from your local collection.'));p=vroot/v['file'];gallery=[]
  for i,t in enumerate([max(20,v['seconds']*.15),v['seconds']*.48,v['seconds']*.75]):
   target=ASSETS/(vid+f'-{i}.jpg')
   if not target.exists():subprocess.run(['ffmpeg','-v','error','-ss',str(t),'-i',str(p),'-frames:v','1','-vf','scale=960:-1','-y',str(target)],check=True)
@@ -76,6 +79,8 @@ def atari(g):
    if candidate.exists():gallery=[str(candidate)];break
  return dict(id='atari-'+g['folder'],title=g['title'],subtitle='Atari ST · Hatari',kind='atari',tag='Retro',description=descriptions.get(g['folder'],'A classic from your curated Atari ST collection. Launch directly with the saved Hatari setup.'),path=str(groot/g['files'][0]['path']),image=gallery[0] if gallery else '',gallery=gallery,source=url,meta='Atari ST',bytes=sum(f['bytes'] for f in g['files']),verified=g.get('boot_tested',False),notes=g.get('boot_test_notes','Compatibility has not been checked for this copy.'),folder=g['folder'],disks=[str(groot/f['path']) for f in g['files'] if Path(f['path']).suffix.lower() in ['.st','.msa','.stx']],rom=str(groot/g['rom']) if 'rom' in g else str(HOME/'.local/share/laser-squad-st/emutos.img'))
 with concurrent.futures.ThreadPoolExecutor(max_workers=4) as pool:items.extend(pool.map(atari,games))
+audio,skipped_audio=scan_audio(HOME/'music/flight');items.extend(audio)
+print('Audio imports:',len(audio),'skipped:',skipped_audio,flush=True)
 items.sort(key=lambda x:(x['kind'],x['title'].lower()))
 (ROOT/'library.json').write_text(json.dumps(items,indent=2,ensure_ascii=False)+'\n')
 (MAG/'sources.json').write_text(json.dumps([dict(title=i['title'],file=i['path'],url=i['source'],sha256=hashlib.sha256(Path(i['path']).read_bytes()).hexdigest()) for i in items if i['kind']=='read'],indent=2))

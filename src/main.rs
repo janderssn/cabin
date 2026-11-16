@@ -89,6 +89,7 @@ struct Cabin {
     notice: Option<(String, bool, Instant)>,
     children: Vec<(String, Child)>,
     help: bool,
+    audio_scan: Option<Child>,
     touch_keyboard: bool,
     show_unverified: bool,
     travel_enabled: bool,
@@ -177,6 +178,7 @@ impl Cabin {
             notice,
             children: vec![],
             help: false,
+            audio_scan: None,
             show_unverified: false,
             travel_enabled: curation::travel_enabled(),
             touch_keyboard: std::env::args().any(|a| a == "--keyboard"),
@@ -289,6 +291,7 @@ impl Cabin {
                         ("planner", "Flight"),
                         ("travel", "Travel"),
                         ("watch", "Watch"),
+                        ("listen", "Listen"),
                         ("puzzles", "Puzzles"),
                         ("atari", "Atari"),
                         ("read", "Read"),
@@ -676,6 +679,9 @@ impl Cabin {
             }
             ui.add_space(12.);
             match item.kind.as_str() {
+                "listen" => {
+                    ui.label(RichText::new("Plays in mpv without video. Quit normally to save your listening position.").size(16.).color(MUTED));
+                }
                 "watch" => {
                     ui.label(RichText::new("Opens in mpv. Space pauses; arrows seek. Quit normally to remember your place.").color(MUTED).size(16.));
                 }
@@ -914,6 +920,29 @@ impl eframe::App for Cabin {
                 }
             }
         }
+        if let Some(child) = self.audio_scan.as_mut() {
+            if let Ok(Some(status)) = child.try_wait() {
+                self.audio_scan = None;
+                match load() {
+                    Ok(items) => {
+                        self.progress = progress::Progress::new(&items);
+                        self.items = items;
+                    }
+                    Err(e) => self.notice = Some((e, true, Instant::now())),
+                }
+                self.notice = Some((
+                    if status.success() {
+                        "Audio library refreshed".into()
+                    } else {
+                        "Some audio files could not be imported. See the launch log.".into()
+                    },
+                    !status.success(),
+                    Instant::now(),
+                ));
+            } else {
+                ctx.request_repaint_after(Duration::from_millis(200));
+            }
+        }
         self.nav_cards.clear();
         if ctx.input(|i| i.pointer.any_pressed()) {
             self.focus_ring = false;
@@ -1009,8 +1038,19 @@ impl eframe::App for Cabin {
             ScrollArea::vertical().id_salt(("content",self.section.clone(),self.detail.clone())).auto_shrink([false,false]).show(ui,|ui|{
                 if let Some(item)=self.items.iter().find(|i|Some(&i.id)==self.detail.as_ref()).cloned(){self.detail_page(ui,item);return;}
                 if self.section=="atari" {ui.checkbox(&mut self.show_unverified,"Show unverified games");ui.label(RichText::new("Verified means a game screen was reached; it is not a complete playthrough.").size(16.).color(MUTED));ui.add_space(12.);}
+                if self.section=="listen" {
+                    ui.label("Music, podcasts and audiobooks from ~/music/flight/");
+                    if ui.add_enabled(self.audio_scan.is_none(),Button::new(if self.audio_scan.is_some(){"Scanning…"}else{"Scan audio folder"})).clicked(){
+                        let log=state_dir().join("launch.log");let _=fs::create_dir_all(state_dir());
+                        match fs::OpenOptions::new().create(true).append(true).open(log){
+                            Ok(file)=>{let mut command=std::process::Command::new("python3");command.arg(home().join(".local/share/cabin/audio_library.py")).stdout(Stdio::from(file.try_clone().unwrap())).stderr(Stdio::from(file));match command.spawn(){Ok(child)=>self.audio_scan=Some(child),Err(e)=>self.notice=Some((e.to_string(),true,Instant::now()))}},
+                            Err(e)=>self.notice=Some((e.to_string(),true,Instant::now())),
+                        }
+                    }ui.add_space(12.);
+                }
                 if self.section=="planner" {self.flight_planner(ui);return;}
                 let (title,sub)=match self.section.as_str(){
+                    "listen"=>("Let the world drift by.","Your local audio collection, ready to resume."),
                     "watch"=>("A window into another world.","Space, history, and the stories behind extraordinary events."),
                     "puzzles"=>("Just one more puzzle.","Forty little challenges. No accounts, no timers, no connection needed."),
                     "atari"=>("Back to the good stuff.","Your Atari ST collection, with the familiar games and a few new discoveries."),

@@ -87,6 +87,7 @@ pub fn matches(item: &Item, query: &str) -> bool {
 pub fn action_label(item: &Item) -> &'static str {
     match item.kind.as_str() {
         "watch" => "Watch now",
+        "listen" => "Listen now",
         "read" => {
             if item.path.ends_with(".html") {
                 "Read book"
@@ -113,6 +114,17 @@ pub fn command_args(item: &Item, prepare: bool) -> Result<(String, Vec<String>),
                 "--sub-auto=fuzzy".into(),
                 "--sid=auto".into(),
                 "--sub-visibility=yes".into(),
+                "--".into(),
+                item.path.clone(),
+            ],
+        )),
+        "listen" => Ok((
+            "/usr/bin/mpv".into(),
+            vec![
+                "--no-video".into(),
+                "--force-window=yes".into(),
+                "--save-position-on-quit".into(),
+                "--af=dynaudnorm".into(),
                 "--".into(),
                 item.path.clone(),
             ],
@@ -302,5 +314,25 @@ mod compatibility_tests {
         item.kind = "watch".into();
         item.verified = false;
         assert!(visible_game(&item, false));
+    }
+}
+
+#[cfg(test)]
+mod audio_tests {
+    use super::*;
+    #[test]
+    fn audio_uses_mpv_without_video_and_with_resume() {
+        let p = std::env::temp_dir().join("cabin-audio-flags.mp3");
+        fs::write(&p, b"fixture").unwrap();
+        let i = Item {
+            kind: "listen".into(),
+            path: p.display().to_string(),
+            ..Default::default()
+        };
+        let (exe, args) = command_args(&i, false).unwrap();
+        assert_eq!(exe, "/usr/bin/mpv");
+        assert!(args.contains(&"--no-video".into()));
+        assert!(args.contains(&"--save-position-on-quit".into()));
+        fs::remove_file(p).unwrap();
     }
 }
