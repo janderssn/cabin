@@ -43,3 +43,9 @@ Installation is per-user; no administrator access is needed. The app uses XWayla
 `list --json` exports the catalog, `check --json` checks local content paths, and `launch ID --dry-run` prints the exact executable and argument array without launching. The app never passes content paths through a shell. `--section travel` opens the travel shelf; `--detail ITEM_ID` opens a detail page. `--screenshot PATH.png` captures the actual rendered window and exits.
 
 The preparation scripts retain source attribution in each catalog entry. `prepare_library.py` rebuilds the base library; run `add_travel.py` afterwards to add the travel collection. They expect the media and games to have already been downloaded. Media and third-party artwork retain their original rights and are not included in the source repository.
+
+## Native Wayland trial
+
+`cabin --wayland` opts into native Wayland and uses the compositor's scale directly (no 0.75 zoom adjustment). On this Hyprland desktop at scale 2, the trial rendered successfully at 2880×1800 and Hyprland reported `xwayland: false`, `fullscreen: 2`.
+
+XWayland remains the default because a physical touchscreen gesture pass has not yet been completed. A touchscreen is detected, but rendering alone does not prove tap/drag behavior. The earlier native build also stalled; the current bounded trial completed successfully. Keeping the established default follows the requirement to switch only after both fullscreen and touch are verified. Use `--wayland` for the touch playtest; no desktop configuration changes are required.

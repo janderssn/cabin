@@ -13,6 +13,7 @@ use std::{
     sync::mpsc,
     time::{Duration, Instant},
 };
+use winit::platform::wayland::EventLoopBuilderExtWayland;
 use winit::platform::x11::EventLoopBuilderExtX11;
 const BG: Color32 = Color32::from_rgb(15, 19, 25);
 const PANEL: Color32 = Color32::from_rgb(21, 27, 35);
@@ -115,7 +116,9 @@ impl Cabin {
         cc.egui_ctx.set_visuals(visuals);
         // XWayland reports Xft DPI separately from the compositor's physical scale.
         // Match the actual output scale to avoid oversized controls on this desktop.
-        cc.egui_ctx.set_zoom_factor(0.75);
+        if !std::env::args().any(|a| a == "--wayland") {
+            cc.egui_ctx.set_zoom_factor(0.75);
+        }
         cc.egui_ctx.style_mut(|s| {
             s.spacing.item_spacing = vec2(12., 12.);
             s.spacing.button_padding = vec2(20., 14.);
@@ -1035,7 +1038,11 @@ fn main() {
             .with_app_id("cabin"),
         renderer: eframe::Renderer::Glow,
         event_loop_builder: Some(Box::new(|builder| {
-            builder.with_x11();
+            if std::env::args().any(|a| a == "--wayland") {
+                builder.with_wayland();
+            } else {
+                builder.with_x11();
+            }
         })),
         ..Default::default()
     };
