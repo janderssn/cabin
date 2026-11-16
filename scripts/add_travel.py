@@ -1,38 +1,85 @@
+"""Prepare the curated nature-travel shelf. Downloads magazines, uses local films.
+Run yt-dlp on videos/flight/documentaries/nature-travel-sources.txt first.
+Original superseded downloads are preserved but removed from the active catalogs.
+"""
 from pathlib import Path
-import urllib.request, json, re, subprocess, hashlib
-root=Path.home()/'.local/share/cabin';assets=root/'assets';mag=Path.home()/'magazines/flight';vroot=Path.home()/'videos/flight/documentaries'
-items=json.loads((root/'library.json').read_text());byid={i['id']:i for i in items}
-def get(u,p):
- if not p.exists():
-  with urllib.request.urlopen(u,timeout=45) as r:b=r.read(120_000_001)
-  assert len(b)<120_000_001;p.write_bytes(b)
-entries=[('hokkaido-tokachi','Slow Travel Hokkaido','Tokachi · The people behind the good taste','https://slow-life-hokkaido.com/cms/wp-content/uploads/2024/11/BehindTheGoodTasteHokkaidoTokachi.pdf'),('hokkaido-vol5','Slow Life Hokkaido','Volume 5 · Japan’s northern island','https://slow-life-hokkaido.com/cms/wp-content/uploads/2019/09/Slow-Life-HOKKAIDO-vol5.pdf'),('travel-magazine-sep2024','The Travel Magazine','September 2024 · Journeys around the world','https://bvtravel.imgix.net/travel-magazine/travelmag092024.pdf')]
-for slug,title,sub,url in entries:
- try:
-  p=mag/(slug+'.pdf');get(url,p);assert p.read_bytes().startswith(b'%PDF-');info=subprocess.check_output(['pdfinfo',str(p)],text=True);pages=int(re.search(r'Pages:\s+(\d+)',info)[1]);cover=assets/(slug+'.png')
-  if not cover.exists():subprocess.run(['pdftoppm','-f','1','-singlefile','-scale-to','1000','-png',str(p),str(cover.with_suffix(''))],check=True,stderr=subprocess.DEVNULL)
-  item=dict(id='mag-'+slug,title=title,subtitle=sub,kind='read',tag='Travel',description=sub+'. A complete issue to browse offline, with destination stories, photography, and travel inspiration.',path=str(p),image=str(cover),gallery=[str(cover)],source=url,meta=f'{pages} pages',pages=pages,bytes=p.stat().st_size,verified=True)
-  byid[item['id']]=item;print('Added magazine',title,pages,flush=True)
- except Exception as e:print('Magazine error',slug,e,flush=True)
-videos=[('Qe5T3Jxhem0','Lisbon','Rick Steves’ Europe · Portugal','Explore Lisbon’s neighborhoods, food, and history with Rick Steves.'),('0IvZOZtjMYM','Portugal’s Heartland','Rick Steves’ Europe · Portugal','Travel beyond Lisbon through Portugal’s towns, landscapes, and traditions.'),('npGwq_ZxVKk','A Train Ride into Japan’s Past','DW Documentary · Japan','A railway journey into Japan, discovering places and traditions along the way.')]
-for vid,title,sub,desc in videos:
- try:
-  p=next(p for p in vroot.glob('*.mkv') if '['+vid+']' in p.name);j=json.loads(p.with_suffix('.info.json').read_text());gallery=[]
-  for n,t in enumerate([j['duration']*.2,j['duration']*.5,j['duration']*.8]):
-   dest=assets/(vid+f'-{n}.jpg')
-   if not dest.exists():subprocess.run(['ffmpeg','-v','error','-ss',str(t),'-i',str(p),'-frames:v','1','-vf','scale=960:-1','-y',str(dest)],check=True)
-   gallery.append(str(dest))
-  byid['video-'+vid]=dict(id='video-'+vid,title=title,subtitle=sub,kind='watch',tag='Travel',description=desc,path=str(p),image=gallery[0],gallery=gallery,source=j['webpage_url'],meta=f'{j["duration"]//60} min',seconds=j['duration'],bytes=p.stat().st_size,verified=True)
-  print('Added film',title,flush=True)
- except Exception as e:print('Video not ready:',vid,e,flush=True)
-for item in byid.values():
- if item['kind']!='watch':continue
- try:
-  p=Path(item['path']);j=json.loads(p.with_suffix('.info.json').read_text());thumbs=[t for t in j.get('thumbnails',[]) if t.get('width',0)>=1000 and 'jpg' in t['url']]
-  if thumbs:
-   target=assets/(item['id']+'-poster.jpg');get(thumbs[-1]['url'],target);item['image']=str(target)
-   if str(target) not in item['gallery']:item['gallery'].insert(0,str(target))
- except Exception as e:print('Poster:',item['id'],e,flush=True)
-(root/'library.json').write_text(json.dumps(list(byid.values()),indent=2,ensure_ascii=False)+'\n')
-(mag/'sources.json').write_text(json.dumps([dict(title=i['title'],file=i['path'],url=i['source'],sha256=hashlib.sha256(Path(i['path']).read_bytes()).hexdigest()) for i in byid.values() if i['kind']=='read'],indent=2))
-print('Catalog:',len(byid),'items',flush=True)
+import urllib.request
+import json
+import re
+import subprocess
+import hashlib
+
+home = Path.home()
+project = Path(__file__).resolve().parents[1]
+root = home / '.local/share/cabin'
+assets = root / 'assets'
+mag = home / 'magazines/flight'
+vroot = home / 'videos/flight/documentaries'
+picks = json.loads((project / 'data/travel-picks.json').read_text())
+if not picks.get('travel_enabled', True):
+    picks['videos'] = []
+    picks['magazines'] = []
+items = json.loads((root / 'library.json').read_text())
+# Keep a recovery copy; commit the new catalog only after every replacement works.
+backup = root / 'library-before-nature-travel.json'
+if not backup.exists():
+    backup.write_text(json.dumps(items, indent=2, ensure_ascii=False) + '\n')
+byid = {i['id']: i for i in items if i.get('tag') != 'Travel' and i['id'] not in {'video-Bd8_vO5zrjo', 'video-BXjydKPcX60', 'video-WHO6xrSF7Sw'}}
+
+def get(url, path):
+    if path.exists():
+        return
+    temporary = path.with_suffix(path.suffix + '.part')
+    subprocess.run(['curl', '--fail', '--location', '--max-time', '120', '--max-filesize', '500000000', '--output', str(temporary), url], check=True)
+    temporary.replace(path)
+
+for entry in picks['magazines'] + json.loads((project / 'data/retro-magazines.json').read_text()):
+    slug = entry['id']
+    path = mag / (slug + '.pdf')
+    get(entry['url'], path)
+    assert path.read_bytes().startswith(b'%PDF-'), path
+    info = subprocess.check_output(['pdfinfo', str(path)], text=True)
+    pages = int(re.search(r'Pages:\s+(\d+)', info)[1])
+    cover = assets / (slug + '.png')
+    if not cover.exists():
+        subprocess.run(['pdftoppm', '-f', '1', '-singlefile', '-scale-to', '1000', '-png', str(path), str(cover.with_suffix(''))], check=True)
+    item = dict(id='mag-' + slug, title=entry['title'], subtitle=entry['subtitle'], kind='read', tag=entry.get('tag', 'Travel'), description=entry['description'], path=str(path), image=str(cover), gallery=[str(cover)], source=entry['url'], meta=f'{pages} pages', pages=pages, bytes=path.stat().st_size, verified=True)
+    byid[item['id']] = item
+    print('Prepared magazine:', item['title'], pages, 'pages', flush=True)
+
+for entry in picks['videos']:
+    vid = entry['id']
+    path = next(p for p in vroot.glob('*.mkv') if '[' + vid + ']' in p.name)
+    metadata = json.loads(path.with_suffix('.info.json').read_text())
+    probe = json.loads(subprocess.check_output(['ffprobe', '-v', 'error', '-show_format', '-show_streams', '-of', 'json', str(path)]))
+    duration = float(probe['format']['duration'])
+    assert any(s['codec_type'] == 'audio' for s in probe['streams'])
+    assert any(s['codec_type'] == 'video' for s in probe['streams'])
+    for position in (0, max(0, duration - 5)):
+        subprocess.run(['ffmpeg', '-v', 'error', '-ss', str(position), '-i', str(path), '-t', '2', '-f', 'null', '-'], check=True)
+    gallery = []
+    for n, fraction in enumerate((.2, .5, .8)):
+        dest = assets / (vid + f'-{n}.jpg')
+        if not dest.exists():
+            subprocess.run(['ffmpeg', '-v', 'error', '-ss', str(duration * fraction), '-i', str(path), '-frames:v', '1', '-vf', 'scale=960:-1', '-y', str(dest)], check=True)
+        gallery.append(str(dest))
+    poster_source = next((path.with_suffix(ext) for ext in ('.webp', '.jpg', '.png') if path.with_suffix(ext).exists()), None)
+    if poster_source:
+        dest = assets / (vid + '-poster.jpg')
+        subprocess.run(['ffmpeg', '-v', 'error', '-i', str(poster_source), '-frames:v', '1', '-y', str(dest)], check=True)
+        gallery.insert(0, str(dest))
+    item = dict(id='video-' + vid, title=entry['title'], subtitle=entry['subtitle'], kind='watch', tag='Travel', description=entry['description'], path=str(path), image=gallery[0], gallery=gallery, source=metadata['webpage_url'], meta=f'{int(duration)//60} min', seconds=round(duration), bytes=path.stat().st_size, verified=True)
+    byid[item['id']] = item
+    print('Verified film:', item['title'], round(duration), 'seconds', flush=True)
+
+items = list(byid.values())
+temporary = root / 'library.json.tmp'
+temporary.write_text(json.dumps(items, indent=2, ensure_ascii=False) + '\n')
+temporary.replace(root / 'library.json')
+(project / 'data/library.json').write_text(json.dumps(items, indent=2, ensure_ascii=False) + '\n')
+(project / 'data/content-sources.json').write_text(json.dumps([dict(id=i['id'], title=i['title'], kind=i['kind'], source=i['source']) for i in items], indent=2, ensure_ascii=False) + '\n')
+(mag / 'sources.json').write_text(json.dumps([dict(title=i['title'], file=i['path'], url=i['source'], sha256=hashlib.sha256(Path(i['path']).read_bytes()).hexdigest()) for i in items if i['kind'] == 'read'], indent=2))
+films = [i for i in items if i['kind'] == 'watch']
+(vroot / 'catalog.json').write_text(json.dumps([dict(title=i['title'], file=i['path'], seconds=i['seconds'], source=i['source'], bytes=i['bytes']) for i in films], indent=2))
+(vroot / 'flight-playlist.m3u').write_text('#EXTM3U\n' + '\n'.join(i['path'] for i in films) + '\n')
+print('Catalog:', len(items), 'items;', len(films), 'films;', round(sum(i['seconds'] for i in films)/60), 'minutes', flush=True)

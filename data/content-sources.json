@@ -432,24 +432,6 @@
     "source": "https://www.youtube.com/watch?v=WM8kjDF0IJU"
   },
   {
-    "id": "video-BXjydKPcX60",
-    "title": "Midway: Hiryu’s Counterstrike",
-    "kind": "watch",
-    "source": "https://www.youtube.com/watch?v=BXjydKPcX60"
-  },
-  {
-    "id": "video-WHO6xrSF7Sw",
-    "title": "Midway: The American Perspective",
-    "kind": "watch",
-    "source": "https://www.youtube.com/watch?v=WHO6xrSF7Sw"
-  },
-  {
-    "id": "video-Bd8_vO5zrjo",
-    "title": "Midway: The Japanese Perspective",
-    "kind": "watch",
-    "source": "https://www.youtube.com/watch?v=Bd8_vO5zrjo"
-  },
-  {
     "id": "video-Qj_62FWfH78",
     "title": "The Stuff of Dreams",
     "kind": "watch",
@@ -462,39 +444,51 @@
     "source": "https://www.youtube.com/watch?v=-dAB72gsIiE"
   },
   {
-    "id": "mag-hokkaido-tokachi",
-    "title": "Slow Travel Hokkaido",
+    "id": "mag-st-action-32",
+    "title": "ST Action · Issue 32",
     "kind": "read",
-    "source": "https://slow-life-hokkaido.com/cms/wp-content/uploads/2024/11/BehindTheGoodTasteHokkaidoTokachi.pdf"
+    "source": "https://www.atarimania.com/mags/pdf/atari_st_action_32.pdf"
   },
   {
-    "id": "mag-hokkaido-vol5",
-    "title": "Slow Life Hokkaido",
+    "id": "mag-st-action-44",
+    "title": "ST Action · Issue 44",
     "kind": "read",
-    "source": "https://slow-life-hokkaido.com/cms/wp-content/uploads/2019/09/Slow-Life-HOKKAIDO-vol5.pdf"
+    "source": "https://www.atarimania.com/mags/pdf/atari_st_action_44.pdf"
   },
   {
-    "id": "mag-travel-magazine-sep2024",
-    "title": "The Travel Magazine",
+    "id": "mag-st-format-24",
+    "title": "ST Format · Issue 24",
     "kind": "read",
-    "source": "https://bvtravel.imgix.net/travel-magazine/travelmag092024.pdf"
+    "source": "https://www.atarimania.com/mags/pdf/atari-st-format-issue-024.pdf"
   },
   {
-    "id": "video-Qe5T3Jxhem0",
-    "title": "Lisbon",
-    "kind": "watch",
-    "source": "https://www.youtube.com/watch?v=Qe5T3Jxhem0"
+    "id": "book-40549",
+    "title": "The Private Life of the Romans",
+    "kind": "read",
+    "source": "https://www.gutenberg.org/ebooks/40549"
   },
   {
-    "id": "video-0IvZOZtjMYM",
-    "title": "Portugal’s Heartland",
-    "kind": "watch",
-    "source": "https://www.youtube.com/watch?v=0IvZOZtjMYM"
+    "id": "book-44624",
+    "title": "Sweden",
+    "kind": "read",
+    "source": "https://www.gutenberg.org/ebooks/44624"
   },
   {
-    "id": "video-npGwq_ZxVKk",
-    "title": "A Train Ride into Japan’s Past",
+    "id": "video-Zu9EWhKzsVg",
+    "title": "Rome: Origins of an Empire",
     "kind": "watch",
-    "source": "https://www.youtube.com/watch?v=npGwq_ZxVKk"
+    "source": "https://www.youtube.com/watch?v=Zu9EWhKzsVg"
+  },
+  {
+    "id": "video-RVUy_bm4V1k",
+    "title": "Rome: Life Inside the Empire",
+    "kind": "watch",
+    "source": "https://www.youtube.com/watch?v=RVUy_bm4V1k"
+  },
+  {
+    "id": "video-Phqk_vXby1w",
+    "title": "Vasa: A Sunken Treasure",
+    "kind": "watch",
+    "source": "https://www.youtube.com/watch?v=Phqk_vXby1w"
   }
 ]

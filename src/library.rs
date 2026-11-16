@@ -86,7 +86,13 @@ pub fn matches(item: &Item, query: &str) -> bool {
 pub fn action_label(item: &Item) -> &'static str {
     match item.kind.as_str() {
         "watch" => "Watch now",
-        "read" => "Read magazine",
+        "read" => {
+            if item.path.ends_with(".html") {
+                "Read book"
+            } else {
+                "Read magazine"
+            }
+        }
         _ => "Play now",
     }
 }
@@ -104,7 +110,14 @@ pub fn command_args(item: &Item, prepare: bool) -> Result<(String, Vec<String>),
                 item.path.clone(),
             ],
         )),
-        "read" => Ok(("/usr/bin/evince".into(), vec![item.path.clone()])),
+        "read" => Ok((
+            if item.path.ends_with(".html") {
+                "/usr/bin/xdg-open".into()
+            } else {
+                "/usr/bin/evince".into()
+            },
+            vec![item.path.clone()],
+        )),
         "puzzles" => {
             // Only known installed puzzle executables are launched; never use a shell.
             if !item.path.starts_with("/usr/bin/puzzles-") || item.path[17..].contains('/') {

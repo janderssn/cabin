@@ -2,10 +2,11 @@ mod library;
 use eframe::egui::*;
 use library::*;
 use std::{
-    collections::HashMap,
+    collections::{HashMap, HashSet},
     fs,
     path::PathBuf,
     process::{Child, Stdio},
+    sync::mpsc,
     time::{Duration, Instant},
 };
 use winit::platform::x11::EventLoopBuilderExtX11;
@@ -66,11 +67,15 @@ struct Cabin {
     query: String,
     detail: Option<String>,
     textures: HashMap<String, TextureHandle>,
+    pending: HashSet<String>,
+    image_jobs: mpsc::Sender<String>,
+    image_results: mpsc::Receiver<(String, Option<ColorImage>)>,
     gallery_index: usize,
     accent: Color32,
     notice: Option<(String, bool, Instant)>,
     children: Vec<(String, Child)>,
     help: bool,
+    touch_keyboard: bool,
     fullscreen_requested: bool,
     started: Instant,
     capture_requested: bool,
@@ -101,17 +106,40 @@ impl Cabin {
         cc.egui_ctx.set_zoom_factor(0.75);
         cc.egui_ctx.style_mut(|s| {
             s.spacing.item_spacing = vec2(12., 12.);
-            s.spacing.button_padding = vec2(16., 10.);
+            s.spacing.button_padding = vec2(20., 14.);
+            s.spacing.interact_size = vec2(52., 52.);
+            s.animation_time = 0.12;
             s.text_styles
-                .insert(TextStyle::Body, FontId::proportional(15.));
+                .insert(TextStyle::Body, FontId::proportional(20.));
             s.text_styles
-                .insert(TextStyle::Button, FontId::proportional(14.));
+                .insert(TextStyle::Button, FontId::proportional(20.));
         });
         let (items, notice) = match load() {
             Ok(i) => (i, None),
             Err(e) => (vec![], Some((e, true, Instant::now()))),
         };
+        let (image_jobs, jobs) = mpsc::channel::<String>();
+        let (results, image_results) = mpsc::channel();
+        let repaint = cc.egui_ctx.clone();
+        std::thread::spawn(move || {
+            while let Ok(path) = jobs.recv() {
+                let decoded = image::open(&path).ok().map(|img| {
+                    let img = img.thumbnail(960, 720).to_rgba8();
+                    ColorImage::from_rgba_unmultiplied(
+                        [img.width() as usize, img.height() as usize],
+                        img.as_raw(),
+                    )
+                });
+                if results.send((path, decoded)).is_err() {
+                    break;
+                }
+                repaint.request_repaint();
+            }
+        });
         Self {
+            pending: HashSet::new(),
+            image_jobs,
+            image_results,
             items,
             history: load_history(),
             section,
@@ -123,7 +151,8 @@ impl Cabin {
             notice,
             children: vec![],
             help: false,
-            fullscreen_requested: false,
+            touch_keyboard: std::env::args().any(|a| a == "--keyboard"),
+            fullscreen_requested: std::env::args().any(|a| a == "--windowed"),
             started: Instant::now(),
             capture_requested: false,
             focus_search: false,
@@ -139,15 +168,13 @@ impl Cabin {
         if let Some(t) = self.textures.get(path) {
             return Some(t.clone());
         }
-        let img = image::open(path).ok()?.to_rgba8();
-        let color = ColorImage::from_rgba_unmultiplied(
-            [img.width() as usize, img.height() as usize],
-            img.as_raw(),
-        );
-        let t = ctx.load_texture(path, color, TextureOptions::LINEAR);
-        self.textures.insert(path.into(), t.clone());
-        Some(t)
+        if self.pending.insert(path.into()) {
+            let _ = self.image_jobs.send(path.into());
+        }
+        let _ = ctx;
+        None
     }
+
     fn picture(&mut self, ui: &Ui, rect: Rect, path: &str, contain: bool) {
         ui.painter()
             .rect_filled(rect, 10, Color32::from_rgb(9, 13, 18));
@@ -224,100 +251,57 @@ impl Cabin {
         }
     }
     fn sidebar(&mut self, ctx: &Context) {
-        SidePanel::left("navigation")
-            .exact_width(194.)
-            .resizable(false)
-            .frame(
-                Frame::new()
-                    .fill(PANEL)
-                    .inner_margin(Margin::symmetric(20, 24)),
-            )
+        TopBottomPanel::bottom("touch_navigation")
+            .frame(Frame::new().fill(PANEL).inner_margin(12))
             .show(ctx, |ui| {
-                ui.horizontal(|ui| {
-                    let (r, _) = ui.allocate_exact_size(vec2(30., 30.), Sense::hover());
-                    let c = r.center();
-                    ui.painter()
-                        .circle_stroke(c, 13., Stroke::new(1.5_f32, self.accent));
-                    ui.painter().line_segment(
-                        [c + vec2(-7., 7.), c + vec2(7., -7.)],
-                        Stroke::new(2.0_f32, self.accent),
-                    );
-                    ui.painter().line_segment(
-                        [c + vec2(7., -7.), c + vec2(2., 5.)],
-                        Stroke::new(2.0_f32, self.accent),
-                    );
-                    ui.label(RichText::new("CABIN").size(23.).strong());
-                });
-                ui.label(RichText::new("YOUR OFFLINE ESCAPE").size(9.).color(MUTED));
-                ui.add_space(38.);
-                for (id, label) in [
-                    ("home", "Discover"),
-                    ("watch", "Watch"),
-                    ("puzzles", "Puzzles"),
-                    ("atari", "Atari classics"),
-                    ("read", "Magazines"),
-                    ("travel", "Travel"),
-                ] {
-                    let selected = self.section == id;
-                    let button = Button::new(
-                        RichText::new(label)
-                            .color(if selected { self.accent } else { MUTED })
-                            .strong(),
-                    )
-                    .fill(if selected { CARD } else { Color32::TRANSPARENT })
-                    .stroke(Stroke::NONE)
-                    .min_size(vec2(150., 42.));
-                    if ui.add(button).clicked() {
-                        self.section = id.into();
-                        self.detail = None;
-                        self.query.clear();
+                ui.horizontal_wrapped(|ui| {
+                    ui.spacing_mut().item_spacing = vec2(8., 8.);
+                    for (id, label) in [
+                        ("home", "Discover"),
+                        ("travel", "Travel"),
+                        ("watch", "Watch"),
+                        ("puzzles", "Puzzles"),
+                        ("atari", "Atari"),
+                        ("read", "Read"),
+                        ("favorites", "Favorites"),
+                        ("recent", "Recent"),
+                    ] {
+                        let selected = self.section == id;
+                        if ui
+                            .add_sized(
+                                [112., 54.],
+                                Button::new(RichText::new(label).size(20.).color(if selected {
+                                    BG
+                                } else {
+                                    TEXT
+                                }))
+                                .fill(if selected {
+                                    self.accent
+                                } else {
+                                    CARD
+                                }),
+                            )
+                            .clicked()
+                        {
+                            self.section = id.into();
+                            self.detail = None;
+                            self.query.clear();
+                        }
                     }
-                }
-                ui.add_space(24.);
-                ui.label(RichText::new("YOUR LIBRARY").size(10.).color(MUTED));
-                for (id, label) in [("favorites", "Favorites"), ("recent", "Recently opened")] {
-                    if ui
-                        .add(
-                            Button::new(RichText::new(label).color(if self.section == id {
-                                self.accent
-                            } else {
-                                MUTED
-                            }))
-                            .fill(Color32::TRANSPARENT)
-                            .stroke(Stroke::NONE)
-                            .min_size(vec2(150., 38.)),
-                        )
-                        .clicked()
-                    {
-                        self.section = id.into();
-                        self.detail = None;
-                        self.query.clear();
-                    }
-                }
-                ui.with_layout(Layout::bottom_up(Align::LEFT), |ui| {
-                    if ui.small_button("Quit Cabin").clicked() {
-                        ctx.send_viewport_cmd(ViewportCommand::Close);
-                    }
-                    if ui.small_button("Keyboard help  ?").clicked() {
+                    if ui.add_sized([80., 54.], Button::new("Help")).clicked() {
                         self.help = true;
                     }
-                    ui.add_space(12.);
-                    ui.label(
-                        RichText::new("No Wi-Fi needed")
-                            .color(Color32::from_rgb(128, 198, 176))
-                            .size(12.),
-                    );
-                    ui.label(
-                        RichText::new(format!("{} things to get lost in", self.items.len()))
-                            .color(MUTED)
-                            .size(11.),
-                    );
-                    ui.separator();
+                    if ui.add_sized([80., 54.], Button::new("Quit")).clicked() {
+                        ctx.send_viewport_cmd(ViewportCommand::Close);
+                    }
                 });
             });
     }
     fn card(&mut self, ui: &mut Ui, item: &Item, width: f32) {
-        let (rect, response) = ui.allocate_exact_size(vec2(width, 252.), Sense::click());
+        let (rect, response) = ui.allocate_exact_size(vec2(width, 320.), Sense::click());
+        if !ui.is_rect_visible(rect) {
+            return;
+        }
         let fill = if response.hovered() {
             Color32::from_rgb(35, 44, 56)
         } else {
@@ -332,11 +316,11 @@ impl Cabin {
                 StrokeKind::Inside,
             );
         }
-        let image_rect = Rect::from_min_size(rect.min + vec2(8., 8.), vec2(width - 16., 140.));
+        let image_rect = Rect::from_min_size(rect.min + vec2(8., 8.), vec2(width - 16., 170.));
         self.picture(ui, image_rect, &item.image, item.kind != "watch");
         let badge = Rect::from_min_size(
-            image_rect.left_bottom() + vec2(8., -27.),
-            vec2((item.meta.len() as f32 * 6. + 16.).min(width - 40.), 20.),
+            image_rect.left_bottom() + vec2(8., -34.),
+            vec2((item.meta.len() as f32 * 9. + 20.).min(width - 40.), 28.),
         );
         ui.painter()
             .rect_filled(badge, 5, Color32::from_black_alpha(205));
@@ -344,38 +328,38 @@ impl Cabin {
             badge.left_center() + vec2(8., 0.),
             Align2::LEFT_CENTER,
             &item.meta,
-            FontId::proportional(10.),
+            FontId::proportional(16.),
             TEXT,
         );
-        let p = rect.min + vec2(15., 160.);
+        let p = rect.min + vec2(15., 192.);
         ui.painter().text(
             p,
             Align2::LEFT_TOP,
             item.tag.to_uppercase(),
-            FontId::proportional(9.),
+            FontId::proportional(14.),
             self.accent,
         );
         let title = ui.painter().layout(
             item.title.clone(),
-            FontId::proportional(17.),
+            FontId::proportional(23.),
             TEXT,
             width - 30.,
         );
         ui.painter()
             .with_clip_rect(Rect::from_min_size(
-                p + vec2(0., 20.),
-                vec2(width - 30., 43.),
+                p + vec2(0., 25.),
+                vec2(width - 30., 58.),
             ))
-            .galley(p + vec2(0., 20.), title, TEXT);
+            .galley(p + vec2(0., 25.), title, TEXT);
         let sub =
             ui.painter()
-                .layout_no_wrap(item.subtitle.clone(), FontId::proportional(11.), MUTED);
+                .layout_no_wrap(item.subtitle.clone(), FontId::proportional(16.), MUTED);
         ui.painter()
             .with_clip_rect(Rect::from_min_size(
-                rect.min + vec2(15., 229.),
-                vec2(width - 30., 17.),
+                rect.min + vec2(15., 282.),
+                vec2(width - 30., 26.),
             ))
-            .galley(rect.min + vec2(15., 229.), sub, MUTED);
+            .galley(rect.min + vec2(15., 282.), sub, MUTED);
         if self.history.favorites.contains(&item.id) {
             ui.painter().text(
                 image_rect.right_top() + vec2(-12., 10.),
@@ -397,21 +381,29 @@ impl Cabin {
         if items.is_empty() {
             ui.add_space(70.);
             ui.vertical_centered(|ui| {
-                ui.heading("Nothing here just yet");
+                ui.heading(if self.section == "travel" {
+                    "Let’s find your kind of escape"
+                } else {
+                    "Nothing here just yet"
+                });
                 ui.label(
                     RichText::new(if self.section == "favorites" {
                         "Open an item and save it to your favorites."
                     } else if self.section == "recent" {
                         "The things you open will appear here."
                     } else {
-                        "Try another search or category."
+                        if self.section == "travel" {
+                            "The previous picks have been set aside."
+                        } else {
+                            "Try another search or category."
+                        }
                     })
                     .color(MUTED),
                 );
             });
             return;
         }
-        let n = ((ui.available_width() + 16.) / 245.).floor().max(1.) as usize;
+        let n = ((ui.available_width() + 16.) / 330.).floor().max(1.) as usize;
         let width = (ui.available_width() - 16. * (n - 1) as f32) / n as f32;
         for chunk in items.chunks(n) {
             ui.horizontal_top(|ui| {
@@ -447,7 +439,7 @@ impl Cabin {
         ui.scope_builder(UiBuilder::new().max_rect(left), |ui| {
             ui.label(
                 RichText::new("FEATURED JOURNEY  /  SPACE")
-                    .size(10.)
+                    .size(16.)
                     .color(self.accent)
                     .strong(),
             );
@@ -460,7 +452,7 @@ impl Cabin {
             ui.add_space(6.);
             ui.label(
                 RichText::new("Voyager, the outer planets, and the people who dared to go there.")
-                    .size(13.)
+                    .size(16.)
                     .color(MUTED),
             );
             ui.add_space(10.);
@@ -508,7 +500,7 @@ impl Cabin {
             });
         });
         ui.add_space(16.);
-        let wide = ui.available_width() > 750.;
+        let wide = ui.available_width() > 980.;
         let left_width = if wide {
             ui.available_width() * 0.58
         } else {
@@ -523,7 +515,7 @@ impl Cabin {
             ui.label(
                 RichText::new(item.tag.to_uppercase())
                     .color(this.accent)
-                    .size(11.)
+                    .size(16.)
                     .strong(),
             );
             ui.label(RichText::new(&item.title).size(29.).strong());
@@ -531,19 +523,19 @@ impl Cabin {
             ui.add_space(10.);
             ui.label(
                 RichText::new(format!("{}  ·  Available offline", item.meta))
-                    .size(13.)
+                    .size(16.)
                     .color(Color32::from_rgb(128, 198, 176)),
             );
             ui.add_space(12.);
             ui.label(
                 RichText::new(&item.description)
-                    .size(15.)
-                    .line_height(Some(22.)),
+                    .size(20.)
+                    .line_height(Some(28.)),
             );
             ui.add_space(18.);
             if ui
                 .add_sized(
-                    [ui.available_width(), 46.],
+                    [ui.available_width(), 64.],
                     Button::new(RichText::new(action_label(&item)).strong().color(BG))
                         .fill(this.accent),
                 )
@@ -554,13 +546,13 @@ impl Cabin {
             ui.add_space(12.);
             match item.kind.as_str() {
                 "watch" => {
-                    ui.label(RichText::new("Opens in mpv. Space pauses; arrows seek. Quit normally to remember your place.").color(MUTED).size(12.));
+                    ui.label(RichText::new("Opens in mpv. Space pauses; arrows seek. Quit normally to remember your place.").color(MUTED).size(16.));
                 }
                 "read" => {
-                    ui.label(RichText::new("Opens in Document Viewer. Zoom, search, and browse the complete issue offline.").color(MUTED).size(12.));
+                    ui.label(RichText::new(if item.path.ends_with(".html") {"Opens as a complete offline book in your browser, with large text and original illustrations."} else {"Opens in Document Viewer. Zoom, search, and browse the complete issue offline."}).color(MUTED).size(16.));
                 }
                 "atari" => {
-                    ui.label(RichText::new("F11: fullscreen  ·  F12: settings / disks\nRight Alt + M: release mouse\nSaves use separate writable disk copies.").color(MUTED).size(12.));
+                    ui.label(RichText::new("F11: fullscreen  ·  F12: settings / disks\nRight Alt + M: release mouse\nSaves use separate writable disk copies.").color(MUTED).size(16.));
                     ui.add_space(8.);
                     ui.label(
                         RichText::new(&item.notes)
@@ -569,11 +561,11 @@ impl Cabin {
                             } else {
                                 Color32::from_rgb(222, 180, 112)
                             })
-                            .size(12.),
+                            .size(16.),
                     );
                 }
                 _ => {
-                    ui.label(RichText::new("A new puzzle every time. Use the game's Help menu for rules and the Type menu for difficulty.").color(MUTED).size(12.));
+                    ui.label(RichText::new("A new puzzle every time. Use the game's Help menu for rules and the Type menu for difficulty.").color(MUTED).size(16.));
                 }
             }
             ui.add_space(16.);
@@ -584,13 +576,13 @@ impl Cabin {
                         "Local size  {:.1} MB",
                         item.bytes as f64 / 1_000_000.
                     ))
-                    .size(12.)
+                    .size(16.)
                     .color(MUTED),
                 );
             }
             ui.collapsing("File & source", |ui| {
-                ui.label(RichText::new(&item.path).size(11.));
-                ui.label(RichText::new(&item.source).size(11.).color(MUTED));
+                ui.label(RichText::new(&item.path).size(16.));
+                ui.label(RichText::new(&item.source).size(16.).color(MUTED));
                 if ui.small_button("Show in folder").clicked() {
                     if let Some(p) = std::path::Path::new(&item.path).parent() {
                         match std::process::Command::new("/usr/bin/xdg-open")
@@ -617,9 +609,9 @@ impl Cabin {
                 });
             });
         } else {
-            self.gallery(ui, &item, &selected, left_width);
-            ui.add_space(14.);
             info(self, ui);
+            ui.add_space(22.);
+            self.gallery(ui, &item, &selected, left_width);
         }
     }
     fn gallery(&mut self, ui: &mut Ui, item: &Item, selected: &str, width: f32) {
@@ -632,7 +624,7 @@ impl Cabin {
         self.picture(ui, r, selected, true);
         if item.gallery.len() > 1 {
             ui.add_space(7.);
-            ui.horizontal(|ui| {
+            ui.horizontal_wrapped(|ui| {
                 for (i, p) in item.gallery.iter().enumerate() {
                     let (r, response) = ui.allocate_exact_size(vec2(94., 62.), Sense::click());
                     self.picture(ui, r, p, true);
@@ -654,11 +646,11 @@ impl Cabin {
         ui.label(
             RichText::new(match item.kind.as_str() {
                 "watch" => "Film artwork and frames from your local copy",
-                "read" => "Cover of the downloaded issue",
+                "read" => "Artwork from your offline reading",
                 "puzzles" => "Screenshot from the puzzle author's website",
                 _ => "Game screenshots / local boot captures",
             })
-            .size(11.)
+            .size(16.)
             .color(MUTED),
         );
     }
@@ -666,6 +658,17 @@ impl Cabin {
 impl eframe::App for Cabin {
     fn update(&mut self, ctx: &Context, _frame: &mut eframe::Frame) {
         self.frames += 1;
+        for _ in 0..4 {
+            match self.image_results.try_recv() {
+                Ok((path, Some(image))) => {
+                    let texture = ctx.load_texture(&path, image, TextureOptions::LINEAR);
+                    self.textures.insert(path, texture);
+                    ctx.request_repaint();
+                }
+                Ok((_, None)) => {}
+                Err(_) => break,
+            }
+        }
         if !self.fullscreen_requested {
             ctx.request_repaint_after(Duration::from_millis(100));
             if self.started.elapsed() > Duration::from_millis(400) {
@@ -768,7 +771,7 @@ impl eframe::App for Cabin {
         if !self.children.is_empty() {
             ctx.request_repaint_after(Duration::from_secs(1));
         }
-        if ctx.content_rect().width() < 720. || ctx.content_rect().height() < 480. {
+        if ctx.content_rect().width() < 320. || ctx.content_rect().height() < 360. {
             CentralPanel::default().show(ctx, |ui| {
                 ui.add_space(30.);
                 ui.heading("Cabin needs a little more room");
@@ -783,12 +786,51 @@ impl eframe::App for Cabin {
             return;
         }
         self.sidebar(ctx);
+        if self.touch_keyboard {
+            TopBottomPanel::bottom("touch_keys")
+                .frame(Frame::new().fill(PANEL).inner_margin(10))
+                .show(ctx, |ui| {
+                    let key_width = ((ui.available_width() - 9. * 6.) / 10.).min(70.);
+                    ui.spacing_mut().item_spacing = vec2(6., 6.);
+                    for row in ["qwertyuiop", "asdfghjkl", "zxcvbnm"] {
+                        ui.horizontal(|ui| {
+                            for key in row.chars() {
+                                if ui
+                                    .add_sized([key_width, 48.], Button::new(key.to_string()))
+                                    .clicked()
+                                {
+                                    self.query.push(key);
+                                    self.detail = None;
+                                }
+                            }
+                        });
+                    }
+                    ui.horizontal(|ui| {
+                        if ui.add_sized([100., 48.], Button::new("Clear")).clicked() {
+                            self.query.clear();
+                        }
+                        if ui
+                            .add_sized([key_width * 3., 48.], Button::new("Space"))
+                            .clicked()
+                        {
+                            self.query.push(' ');
+                        }
+                        if ui.add_sized([100., 48.], Button::new("Delete")).clicked() {
+                            self.query.pop();
+                        }
+                        if ui.add_sized([100., 48.], Button::new("Done")).clicked() {
+                            self.touch_keyboard = false;
+                        }
+                    });
+                });
+        }
         CentralPanel::default().frame(Frame::new().fill(BG).inner_margin(Margin::symmetric(30,24))).show(ctx,|ui|{
             ui.horizontal(|ui|{
-                ui.label(RichText::new("THE OFFLINE COLLECTION").size(10.).color(MUTED).strong());
+                if ui.available_width() > 650. {ui.label(RichText::new("CABIN / OFFLINE").size(20.).color(MUTED).strong());}
                 ui.with_layout(Layout::right_to_left(Align::Center),|ui|{
-                    if ui.small_button("Reload").on_hover_text("Reload local library").clicked(){match load(){Ok(i)=>self.items=i,Err(e)=>self.notice=Some((e,true,Instant::now()))}}
-                    let r=ui.add_sized([230.,32.],TextEdit::singleline(&mut self.query).hint_text("Search your collection…").id(Id::new("search")));
+                    if ui.button("Keys").clicked(){self.touch_keyboard=!self.touch_keyboard;}
+                    if ui.button("Reload").on_hover_text("Reload local library").clicked(){match load(){Ok(i)=>self.items=i,Err(e)=>self.notice=Some((e,true,Instant::now()))}}
+                    let r=ui.add_sized([ui.available_width().min(380.),54.],TextEdit::singleline(&mut self.query).hint_text("Search your collection…").id(Id::new("search")));
                     if self.focus_search{r.request_focus();self.focus_search=false;}
                 });
             });ui.add_space(18.);
@@ -799,21 +841,21 @@ impl eframe::App for Cabin {
                     "watch"=>("A window into another world.","Space, history, and the stories behind extraordinary events."),
                     "puzzles"=>("Just one more puzzle.","Forty little challenges. No accounts, no timers, no connection needed."),
                     "atari"=>("Back to the good stuff.","Your Atari ST collection, with the familiar games and a few new discoveries."),
-                    "read"=>("The long way through a page.","Space, aviation, and retro computing. Complete issues, saved locally."),
-                    "travel"=>("Somewhere you haven’t been.","Travel films and magazines, ready for a little wandering."),
+                    "read"=>("The long way through a page.","Islands, sailing, space and retro computing. Complete issues, saved locally."),
+                    "travel"=>("Somewhere you haven’t been.","Seas, islands, beaches and mountains. The Americas, Asia and the Caribbean."),
                     "favorites"=>("Your personal shortlist.","The things you have saved for later."),
                     "recent"=>("Pick up where you left off.","Recently opened. Videos remember their playback position."),
                     _=>("Settle in. Switch off.","A good flight starts with something worth getting lost in."),};
-                ui.label(RichText::new(title).size(31.).strong());ui.label(RichText::new(sub).color(MUTED).size(14.));ui.add_space(20.);
+                ui.label(RichText::new(title).size(31.).strong());ui.label(RichText::new(sub).color(MUTED).size(16.));ui.add_space(20.);
                 if self.section=="home"&&self.query.is_empty(){
-                    self.hero(ui);ui.add_space(21.);
-                    ui.horizontal(|ui|{ui.label(RichText::new("Packed for the journey").size(21.).strong());ui.with_layout(Layout::right_to_left(Align::Center),|ui|{ui.label(RichText::new(format!("{} films  ·  {} puzzles  ·  {} magazines",self.items.iter().filter(|i|i.kind=="watch").count(),self.items.iter().filter(|i|i.kind=="puzzles").count(),self.items.iter().filter(|i|i.kind=="read").count())).size(11.).color(MUTED));});});ui.add_space(9.);
+                    if ui.available_width() > 850. {self.hero(ui);ui.add_space(21.);}
+                    ui.horizontal_wrapped(|ui|{ui.label(RichText::new("Packed for the journey").size(21.).strong());ui.with_layout(Layout::right_to_left(Align::Center),|ui|{ui.label(RichText::new(format!("{} films  ·  {} puzzles  ·  {} magazines",self.items.iter().filter(|i|i.kind=="watch").count(),self.items.iter().filter(|i|i.kind=="puzzles").count(),self.items.iter().filter(|i|i.kind=="read").count())).size(16.).color(MUTED));});});ui.add_space(9.);
                     let ids=["puzzle-net","mag-air-space-jul-aug-2025","atari-laser-squad","video-WM8kjDF0IJU","puzzle-pattern","mag-st-review-11","video-Bd8_vO5zrjo","puzzle-bridges","atari-stunt-car-racer"];
                     let items=ids.iter().filter_map(|id|self.items.iter().find(|i|i.id==*id).cloned()).collect();self.grid(ui,items);
                 }else{
                     let mut items:Vec<Item>=self.items.iter().filter(|i|matches(i,&self.query)&&match self.section.as_str(){"home"=>true,"travel"=>i.tag=="Travel","favorites"=>self.history.favorites.contains(&i.id),"recent"=>self.history.recent.contains(&i.id),s=>i.kind==s}).cloned().collect();
                     if self.section=="recent"{items.sort_by_key(|i|self.history.recent.iter().position(|id|id==&i.id).unwrap_or(999));}
-                    ui.label(RichText::new(format!("{} items · stored on this laptop",items.len())).color(MUTED).size(11.));ui.add_space(8.);self.grid(ui,items);
+                    ui.label(RichText::new(format!("{} items · stored on this laptop",items.len())).color(MUTED).size(16.));ui.add_space(8.);self.grid(ui,items);
                 }
             });
         });
@@ -907,7 +949,7 @@ fn main() {
         viewport: ViewportBuilder::default()
             .with_title("Cabin — your offline escape")
             .with_inner_size([1220., 820.])
-            .with_min_inner_size([760., 600.])
+            .with_min_inner_size([360., 400.])
             .with_app_id("cabin"),
         renderer: eframe::Renderer::Glow,
         event_loop_builder: Some(Box::new(|builder| {
