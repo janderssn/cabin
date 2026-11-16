@@ -280,6 +280,136 @@ impl Cabin {
             Err(e) => self.notice = Some((e, true, Instant::now())),
         }
     }
+    fn search_toolbar(&mut self, ui: &mut Ui) {
+        let wide = ui.available_width() >= 900.;
+        ui.horizontal(|ui| {
+            ui.spacing_mut().item_spacing.x = 12.;
+            if wide {
+                ui.allocate_ui_with_layout(vec2(220., 56.), Layout::top_down(Align::Min), |ui| {
+                    ui.label(RichText::new("CABIN").size(22.).strong());
+                    ui.label(
+                        RichText::new("Your offline collection")
+                            .size(14.)
+                            .color(MUTED),
+                    );
+                });
+                ui.add_space((ui.available_width() - 730.).max(16.));
+            }
+            let search_width = (ui.available_width() - 204.).max(100.);
+            let (rect, _) = ui.allocate_exact_size(vec2(search_width, 56.), Sense::hover());
+            let id = Id::new("search");
+            let focused = ui.memory(|m| m.has_focus(id));
+            ui.painter().rect(
+                rect,
+                16,
+                PANEL,
+                Stroke::new(
+                    if focused { 2.0_f32 } else { 1.0_f32 },
+                    if focused { self.accent } else { BORDER },
+                ),
+                StrokeKind::Inside,
+            );
+            let center = pos2(rect.left() + 24., rect.center().y - 2.);
+            ui.painter().circle_stroke(
+                center,
+                7.,
+                Stroke::new(2.0_f32, if focused { self.accent } else { MUTED }),
+            );
+            ui.painter().line_segment(
+                [center + vec2(5., 5.), center + vec2(11., 11.)],
+                Stroke::new(2.0_f32, MUTED),
+            );
+            let trailing = if self.query.is_empty() {
+                if search_width > 320. { 72. } else { 12. }
+            } else {
+                52.
+            };
+            let input_rect = Rect::from_min_max(
+                pos2(rect.left() + 48., rect.top()),
+                pos2(rect.right() - trailing, rect.bottom()),
+            );
+            let mut input_ui = ui.new_child(
+                UiBuilder::new()
+                    .max_rect(input_rect)
+                    .layout(Layout::left_to_right(Align::Center)),
+            );
+            let response = input_ui.add(
+                TextEdit::singleline(&mut self.query)
+                    .id(id)
+                    .frame(false)
+                    .desired_width(input_rect.width())
+                    .font(FontId::proportional(20.))
+                    .text_color(TEXT)
+                    .hint_text(RichText::new("Search collection").color(MUTED)),
+            );
+            if self.focus_search {
+                response.request_focus();
+                self.focus_search = false;
+            }
+            if response.changed() {
+                self.detail = None;
+            }
+            if self.query.is_empty() {
+                if search_width > 320. {
+                    ui.painter().text(
+                        pos2(rect.right() - 16., rect.center().y),
+                        Align2::RIGHT_CENTER,
+                        "Ctrl F",
+                        FontId::proportional(14.),
+                        MUTED,
+                    );
+                }
+            } else {
+                let clear = Rect::from_center_size(
+                    pos2(rect.right() - 27., rect.center().y),
+                    vec2(44., 44.),
+                );
+                let r = ui
+                    .interact(clear, Id::new("clear_search"), Sense::click())
+                    .on_hover_text("Clear search");
+                if r.hovered() {
+                    ui.painter().rect_filled(clear.shrink(3.), 12, CARD);
+                }
+                let c = clear.center();
+                for sign in [-1., 1.] {
+                    ui.painter().line_segment(
+                        [c + vec2(-5., sign * -5.), c + vec2(5., sign * 5.)],
+                        Stroke::new(2.0_f32, MUTED),
+                    );
+                }
+                if r.clicked() {
+                    self.query.clear();
+                    response.request_focus();
+                }
+            }
+            for (label, active) in [("Keyboard", self.touch_keyboard), ("Reload", false)] {
+                let r = ui.add_sized(
+                    [if label == "Keyboard" { 94. } else { 66. }, 56.],
+                    Button::new(RichText::new(label).size(16.).color(if active {
+                        self.accent
+                    } else {
+                        MUTED
+                    }))
+                    .fill(if active { CARD } else { BG })
+                    .corner_radius(14.),
+                );
+                if r.clicked() {
+                    if label == "Keyboard" {
+                        self.touch_keyboard = !self.touch_keyboard;
+                    } else {
+                        match load() {
+                            Ok(i) => {
+                                self.progress = progress::Progress::new(&i);
+                                self.travel_enabled = curation::travel_enabled();
+                                self.items = i;
+                            }
+                            Err(e) => self.notice = Some((e, true, Instant::now())),
+                        }
+                    }
+                }
+            }
+        });
+    }
     fn sidebar(&mut self, ctx: &Context) {
         TopBottomPanel::bottom("touch_navigation")
             .frame(Frame::new().fill(PANEL).inner_margin(12))
@@ -1025,15 +1155,8 @@ impl eframe::App for Cabin {
                 });
         }
         CentralPanel::default().frame(Frame::new().fill(BG).inner_margin(Margin::symmetric(30,24))).show(ctx,|ui|{
-            ui.horizontal(|ui|{
-                if ui.available_width() > 650. {ui.label(RichText::new("CABIN / OFFLINE").size(20.).color(MUTED).strong());}
-                ui.with_layout(Layout::right_to_left(Align::Center),|ui|{
-                    if ui.button("Keys").clicked(){self.touch_keyboard=!self.touch_keyboard;}
-                    if ui.button("Reload").on_hover_text("Reload local library").clicked(){match load(){Ok(i)=>{self.progress=progress::Progress::new(&i);self.travel_enabled=curation::travel_enabled();self.items=i;},Err(e)=>self.notice=Some((e,true,Instant::now()))}}
-                    let r=ui.add_sized([ui.available_width().min(380.),54.],TextEdit::singleline(&mut self.query).hint_text("Search your collection…").id(Id::new("search")));
-                    if self.focus_search{r.request_focus();self.focus_search=false;}
-                });
-            });ui.add_space(18.);
+            self.search_toolbar(ui);
+            ui.add_space(24.);
             if let Some((text,error,_))=&self.notice{let t=text.clone();let error=*error;Frame::new().fill(if error{Color32::from_rgb(68,37,36)}else{Color32::from_rgb(26,53,48)}).corner_radius(8).inner_margin(10).show(ui,|ui|{ui.horizontal_wrapped(|ui|{ui.label(&t);if ui.small_button("Dismiss").clicked(){self.notice=None;}});});ui.add_space(10.);}
             ScrollArea::vertical().id_salt(("content",self.section.clone(),self.detail.clone())).auto_shrink([false,false]).show(ui,|ui|{
                 if let Some(item)=self.items.iter().find(|i|Some(&i.id)==self.detail.as_ref()).cloned(){self.detail_page(ui,item);return;}
