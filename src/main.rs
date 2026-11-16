@@ -1,4 +1,5 @@
 mod library;
+mod validation;
 use eframe::egui::*;
 use library::*;
 use std::{
@@ -908,22 +909,13 @@ fn main() {
             match args[0].as_str() {
                 "list" => println!("{}", serde_json::to_string_pretty(&items).unwrap()),
                 "check" => {
-                    let errors: Vec<_> = items
-                        .iter()
-                        .filter_map(|i| {
-                            command_args(i, false)
-                                .err()
-                                .map(|e| format!("{}: {e}", i.title))
-                        })
-                        .collect();
-                    println!(
-                        "{}",
-                        serde_json::json!({"items":items.len(),"errors":errors,"offline":true})
-                    );
-                    if !errors.is_empty() {
+                    let report = validation::check(&items);
+                    println!("{}", serde_json::to_string(&report).unwrap());
+                    if !report.errors.is_empty() {
                         return Err("Library check failed".into());
                     }
                 }
+
                 "launch" => {
                     let id = args
                         .get(1)
