@@ -875,18 +875,20 @@ impl Cabin {
     }
     fn flight_planner(&mut self, ui: &mut Ui) {
         ui.heading("Make time fly");
-        ui.label("One line-up per flight. Enter your time in the air, less take-off and landing.");
+        ui.label("One line-up per flight and stopover. Enter the time you can actually use.");
         ui.add_space(16.);
         if self.history.plan.is_empty() {
             self.history.plan = vec![180];
         }
-        let before = self.history.plan.clone();
+        let before = (self.history.plan.clone(), self.history.plan_kinds.clone());
         let mut remove = None;
         let count = self.history.plan.len();
+        self.history.plan_kinds.resize(count, "flight".into());
+        let names = planner::segment_names(&self.history.plan_kinds, count);
         for (n, minutes) in self.history.plan.iter_mut().enumerate() {
             ui.horizontal_wrapped(|ui| {
                 ui.label(if count > 1 {
-                    format!("Flight {}", n + 1)
+                    names[n].clone()
                 } else {
                     "Flight length".into()
                 });
@@ -914,11 +916,21 @@ impl Cabin {
         }
         if let Some(n) = remove {
             self.history.plan.remove(n);
+            self.history.plan_kinds.remove(n);
         }
-        if self.history.plan.len() < 4 && ui.button("Add a connecting flight").clicked() {
-            self.history.plan.push(90);
+        if self.history.plan.len() < 6 {
+            ui.horizontal_wrapped(|ui| {
+                if ui.button("Add a connecting flight").clicked() {
+                    self.history.plan.push(90);
+                    self.history.plan_kinds.push("flight".into());
+                }
+                if ui.button("Add a stopover").clicked() {
+                    self.history.plan.push(60);
+                    self.history.plan_kinds.push("stop".into());
+                }
+            });
         }
-        if self.history.plan != before {
+        if (self.history.plan.clone(), self.history.plan_kinds.clone()) != before {
             self.save();
         }
         ui.label(RichText::new(self.battery.label()).color(self.accent));
@@ -941,13 +953,14 @@ impl Cabin {
         ui.label("Films use their remaining runtime. Reading and game sessions are estimates.");
         self.nav_columns = 1;
         let legs = self.history.plan.clone();
+        let names = planner::segment_names(&self.history.plan_kinds, legs.len());
         for (leg, plan) in plans.into_iter().enumerate() {
             let total: u32 = plan.iter().map(|s| s.minutes).sum();
             ui.add_space(18.);
             ui.heading(format!(
                 "{}{}h {:02}m planned · {} min spare",
                 if legs.len() > 1 {
-                    format!("Flight {} · ", leg + 1)
+                    format!("{} · ", names[leg])
                 } else {
                     String::new()
                 },

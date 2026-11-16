@@ -18,7 +18,7 @@ Open **Cabin** from the desktop launcher or run `~/.local/bin/cabin`.
 
 - Tap a card to see details; swipe to scroll. The bottom navigation stays available. **Keyboard** opens the touch keyboard.
 - Arrows move between cards; Enter opens details or launches; Space launches from details. Escape goes back, Ctrl+F searches, Q quits, F11 toggles fullscreen.
-- **Flight** accepts a flight length and proposes films, reading and games within it. Film durations use saved progress; reading/game sessions are estimates. Battery data comes from `/sys/class/power_supply/BAT0` and uses current discharge, when available.
+- **Flight** takes the time for each flight and stopover of a trip and proposes films, reading and games for each, without repeats. The trip is saved. Film durations use saved progress; reading/game sessions are estimates. Battery data comes from `/sys/class/power_supply/BAT0` and uses current discharge, when available.
 - **Listen** scans `~/music/flight/` recursively. Add MP3, M4A/M4B, FLAC, Ogg/Opus, WAV or AAC and tap **Scan audio folder**. No audio has been downloaded automatically.
 - Videos use mpv fullscreen, safe automatic hardware decode, volume normalization and visible subtitles. Music/podcasts/audiobooks use mpv without video and with resume.
 - PDFs open in Evince. Illustrated HTML books open locally in the browser with larger text and bundled images; historical books are labelled with their period.

@@ -37,6 +37,8 @@ pub struct History {
     pub recent: Vec<String>,
     /// Minutes in the air for each flight of the trip being planned.
     pub plan: Vec<u32>,
+    /// "flight" or "stop" for each entry of `plan`; missing entries are flights.
+    pub plan_kinds: Vec<String>,
 }
 
 pub fn home() -> PathBuf {

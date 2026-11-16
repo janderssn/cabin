@@ -62,6 +62,20 @@ pub fn trip(items: &[Item], legs: &[u32], remaining: &HashMap<String, u64>) -> V
         })
         .collect()
 }
+/// "Flight 1", "Stopover", "Flight 2": flights are numbered, waits on the ground are not.
+pub fn segment_names(kinds: &[String], count: usize) -> Vec<String> {
+    let mut flights = 0;
+    (0..count)
+        .map(|n| {
+            if kinds.get(n).is_some_and(|k| k == "stop") {
+                "Stopover".to_string()
+            } else {
+                flights += 1;
+                format!("Flight {flights}")
+            }
+        })
+        .collect()
+}
 #[derive(Default)]
 pub struct Battery {
     pub percent: Option<u8>,
@@ -167,6 +181,14 @@ mod tests {
             .collect();
         assert_eq!(ids, vec![vec!["a"], vec!["b"]]);
         assert!(trip(&items, &[], &HashMap::new()).is_empty());
+    }
+    #[test]
+    fn stopovers_are_named_and_do_not_take_a_flight_number() {
+        let kinds = vec!["flight".to_string(), "stop".to_string()];
+        assert_eq!(
+            segment_names(&kinds, 3),
+            vec!["Flight 1", "Stopover", "Flight 2"]
+        );
     }
     #[test]
     fn battery_uses_matching_units_and_handles_zero_draw() {
