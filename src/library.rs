@@ -35,6 +35,8 @@ pub struct Item {
 pub struct History {
     pub favorites: BTreeSet<String>,
     pub recent: Vec<String>,
+    /// Minutes in the air for each flight of the trip being planned.
+    pub plan: Vec<u32>,
 }
 
 pub fn home() -> PathBuf {

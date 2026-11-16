@@ -18,10 +18,8 @@ pub fn lineup(items: &[Item], budget: u32, remaining: &HashMap<String, u64>) -> 
     } else {
         0
     };
-    for i in items
-        .iter()
-        .filter(|i| i.kind == "watch" || i.kind == "listen")
-    {
+    // Films only: audio is for listening alongside, and a book's chapters would crowd the plan.
+    for i in items.iter().filter(|i| i.kind == "watch") {
         let seconds = *remaining.get(&i.id).unwrap_or(&i.seconds);
         let duration = seconds.div_ceil(60) as u32;
         if duration > 0 && duration <= left.saturating_sub(reserve) {
@@ -51,6 +49,18 @@ pub fn lineup(items: &[Item], budget: u32, remaining: &HashMap<String, u64>) -> 
         }
     }
     out
+}
+/// A line-up per flight for a trip with stops. Nothing is planned twice, and
+/// no film is split across a stop.
+pub fn trip(items: &[Item], legs: &[u32], remaining: &HashMap<String, u64>) -> Vec<Vec<Slot>> {
+    let mut left: Vec<Item> = items.to_vec();
+    legs.iter()
+        .map(|&budget| {
+            let plan = lineup(&left, budget, remaining);
+            left.retain(|i| !plan.iter().any(|s| s.item.id == i.id));
+            plan
+        })
+        .collect()
 }
 #[derive(Default)]
 pub struct Battery {
@@ -134,6 +144,29 @@ mod tests {
                     <= budget
             );
         }
+    }
+    #[test]
+    fn trip_plans_each_flight_without_repeats() {
+        let film = |id: &str, seconds| Item {
+            id: id.into(),
+            kind: "watch".into(),
+            seconds,
+            ..Default::default()
+        };
+        let mut items = vec![film("a", 3000), film("b", 3000), film("c", 1200)];
+        items.push(Item {
+            id: "chapter".into(),
+            kind: "listen".into(),
+            seconds: 600,
+            ..Default::default()
+        });
+        let plans = trip(&items, &[60, 60], &HashMap::new());
+        let ids: Vec<Vec<&str>> = plans
+            .iter()
+            .map(|p| p.iter().map(|s| s.item.id.as_str()).collect())
+            .collect();
+        assert_eq!(ids, vec![vec!["a"], vec!["b"]]);
+        assert!(trip(&items, &[], &HashMap::new()).is_empty());
     }
     #[test]
     fn battery_uses_matching_units_and_handles_zero_draw() {

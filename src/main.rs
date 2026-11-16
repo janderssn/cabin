@@ -87,7 +87,6 @@ struct Cabin {
     focused_card: Option<String>,
     focus_ring: bool,
     scroll_focus: bool,
-    flight_minutes: u32,
     battery: planner::Battery,
     gallery_index: usize,
     accent: Color32,
@@ -106,6 +105,8 @@ struct Cabin {
     /// Scripted moves for automated screenshots (`--moves down,down,up`).
     scripted_moves: Vec<navigation::Direction>,
     scripted_done: usize,
+    /// Which flight's line-up holds the focus in the planner.
+    focused_leg: usize,
     frames: u32,
     theme_check: Instant,
 }
@@ -184,7 +185,6 @@ impl Cabin {
             focused_card: None,
             focus_ring: false,
             scroll_focus: false,
-            flight_minutes: 180,
             battery: planner::Battery::read(),
             gallery_index: 0,
             accent: accent(),
@@ -202,6 +202,7 @@ impl Cabin {
             screenshot,
             scripted_moves,
             scripted_done: 0,
+            focused_leg: 0,
             frames: 0,
             theme_check: Instant::now(),
         }
@@ -409,11 +410,16 @@ impl Cabin {
             return;
         }
         if self.section == "planner" && self.detail.is_none() && matches!(action, Left | Right) {
-            self.flight_minutes = if action == Left {
-                self.flight_minutes.saturating_sub(15).max(15)
-            } else {
-                (self.flight_minutes + 15).min(1440)
-            };
+            // Adjusts the flight whose line-up holds the focus (the first by default).
+            let leg = self.focused_leg.min(self.history.plan.len().saturating_sub(1));
+            if let Some(minutes) = self.history.plan.get_mut(leg) {
+                *minutes = if action == Left {
+                    minutes.saturating_sub(15).max(15)
+                } else {
+                    (*minutes + 15).min(1440)
+                };
+                self.save();
+            }
             return;
         }
         if self.detail.is_some() {
@@ -869,28 +875,52 @@ impl Cabin {
     }
     fn flight_planner(&mut self, ui: &mut Ui) {
         ui.heading("Make time fly");
-        ui.label("Build a line-up for your flight.");
+        ui.label("One line-up per flight. Enter your time in the air, less take-off and landing.");
         ui.add_space(16.);
-        ui.horizontal_wrapped(|ui| {
-            ui.label("Flight length");
-            if ui.add_sized([60., 54.], Button::new("−")).clicked() {
-                self.flight_minutes = self.flight_minutes.saturating_sub(15).max(15);
-            }
-            ui.add(
-                DragValue::new(&mut self.flight_minutes)
-                    .range(15..=1440)
-                    .speed(15)
-                    .suffix(" min"),
-            );
-            if ui.add_sized([60., 54.], Button::new("+")).clicked() {
-                self.flight_minutes = (self.flight_minutes + 15).min(1440);
-            }
-            for (m, label) in [(60, "1h"), (180, "3h"), (360, "6h"), (600, "10h")] {
-                if ui.button(label).clicked() {
-                    self.flight_minutes = m;
+        if self.history.plan.is_empty() {
+            self.history.plan = vec![180];
+        }
+        let before = self.history.plan.clone();
+        let mut remove = None;
+        let count = self.history.plan.len();
+        for (n, minutes) in self.history.plan.iter_mut().enumerate() {
+            ui.horizontal_wrapped(|ui| {
+                ui.label(if count > 1 {
+                    format!("Flight {}", n + 1)
+                } else {
+                    "Flight length".into()
+                });
+                if ui.add_sized([60., 54.], Button::new("−")).clicked() {
+                    *minutes = minutes.saturating_sub(15).max(15);
                 }
-            }
-        });
+                ui.add(
+                    DragValue::new(minutes)
+                        .range(15..=1440)
+                        .speed(5)
+                        .custom_formatter(|v, _| format!("{}h {:02}m", v as u32 / 60, v as u32 % 60)),
+                );
+                if ui.add_sized([60., 54.], Button::new("+")).clicked() {
+                    *minutes = (*minutes + 15).min(1440);
+                }
+                for (m, label) in [(60, "1h"), (180, "3h"), (360, "6h"), (600, "10h")] {
+                    if ui.button(label).clicked() {
+                        *minutes = m;
+                    }
+                }
+                if count > 1 && ui.button("Remove").clicked() {
+                    remove = Some(n);
+                }
+            });
+        }
+        if let Some(n) = remove {
+            self.history.plan.remove(n);
+        }
+        if self.history.plan.len() < 4 && ui.button("Add a connecting flight").clicked() {
+            self.history.plan.push(90);
+        }
+        if self.history.plan != before {
+            self.save();
+        }
         ui.label(RichText::new(self.battery.label()).color(self.accent));
         let ordered = curation::home_items(
             &self.items,
@@ -907,51 +937,62 @@ impl Cabin {
                 )
             })
             .collect();
-        let plan = planner::lineup(&ordered, self.flight_minutes, &remaining);
-        let total: u32 = plan.iter().map(|s| s.minutes).sum();
-        ui.add_space(18.);
-        ui.heading(format!(
-            "{}h {:02}m planned · {} min spare",
-            total / 60,
-            total % 60,
-            self.flight_minutes.saturating_sub(total)
-        ));
+        let plans = planner::trip(&ordered, &self.history.plan, &remaining);
         ui.label("Films use their remaining runtime. Reading and game sessions are estimates.");
         self.nav_columns = 1;
-        for slot in plan {
-            self.nav_cards.push(slot.item.id.clone());
-            let focused = self.focus_ring && self.focused_card.as_ref() == Some(&slot.item.id);
-            ui.add_space(12.);
-            let row = Frame::new()
-                .fill(CARD)
-                .stroke(Stroke::new(
-                    2.0_f32,
-                    if focused { self.accent } else { CARD },
-                ))
-                .corner_radius(12)
-                .inner_margin(18)
-                .show(ui, |ui| {
-                    ui.horizontal_wrapped(|ui| {
-                        ui.label(
-                            RichText::new(format!(
-                                "{} min{}",
-                                slot.minutes,
-                                if slot.estimated { " suggested" } else { "" }
-                            ))
-                            .color(self.accent),
-                        );
-                        if ui.button(&slot.item.title).clicked() {
-                            self.detail = Some(slot.item.id.clone());
-                            self.gallery_index = 0;
-                        }
-                        if ui.button(action_label(&slot.item)).clicked() {
-                            self.launch(&slot.item);
-                        }
+        let legs = self.history.plan.clone();
+        for (leg, plan) in plans.into_iter().enumerate() {
+            let total: u32 = plan.iter().map(|s| s.minutes).sum();
+            ui.add_space(18.);
+            ui.heading(format!(
+                "{}{}h {:02}m planned · {} min spare",
+                if legs.len() > 1 {
+                    format!("Flight {} · ", leg + 1)
+                } else {
+                    String::new()
+                },
+                total / 60,
+                total % 60,
+                legs[leg].saturating_sub(total)
+            ));
+            for slot in plan {
+                self.nav_cards.push(slot.item.id.clone());
+                let focused = self.focus_ring && self.focused_card.as_ref() == Some(&slot.item.id);
+                ui.add_space(12.);
+                let row = Frame::new()
+                    .fill(CARD)
+                    .stroke(Stroke::new(
+                        2.0_f32,
+                        if focused { self.accent } else { CARD },
+                    ))
+                    .corner_radius(12)
+                    .inner_margin(18)
+                    .show(ui, |ui| {
+                        ui.horizontal_wrapped(|ui| {
+                            ui.label(
+                                RichText::new(format!(
+                                    "{} min{}",
+                                    slot.minutes,
+                                    if slot.estimated { " suggested" } else { "" }
+                                ))
+                                .color(self.accent),
+                            );
+                            if ui.button(&slot.item.title).clicked() {
+                                self.detail = Some(slot.item.id.clone());
+                                self.gallery_index = 0;
+                            }
+                            if ui.button(action_label(&slot.item)).clicked() {
+                                self.launch(&slot.item);
+                            }
+                        });
                     });
-                });
-            if focused && self.scroll_focus {
-                ui.scroll_to_rect(row.response.rect, Some(Align::Center));
-                self.scroll_focus = false;
+                if focused {
+                    self.focused_leg = leg;
+                }
+                if focused && self.scroll_focus {
+                    ui.scroll_to_rect(row.response.rect, Some(Align::Center));
+                    self.scroll_focus = false;
+                }
             }
         }
     }
