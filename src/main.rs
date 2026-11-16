@@ -103,6 +103,9 @@ struct Cabin {
     capture_requested: bool,
     focus_search: bool,
     screenshot: Option<PathBuf>,
+    /// Scripted moves for automated screenshots (`--moves down,down,up`).
+    scripted_moves: Vec<navigation::Direction>,
+    scripted_done: usize,
     frames: u32,
     theme_check: Instant,
 }
@@ -112,6 +115,7 @@ impl Cabin {
         section: String,
         detail: Option<String>,
         screenshot: Option<PathBuf>,
+        scripted_moves: Vec<navigation::Direction>,
     ) -> Self {
         let mut visuals = Visuals::dark();
         visuals.panel_fill = BG;
@@ -196,6 +200,8 @@ impl Cabin {
             capture_requested: false,
             focus_search: false,
             screenshot,
+            scripted_moves,
+            scripted_done: 0,
             frames: 0,
             theme_check: Instant::now(),
         }
@@ -214,7 +220,13 @@ impl Cabin {
         None
     }
 
+    /// `contain` shows the whole picture; otherwise it fills the frame and the
+    /// overflow is cropped. `keep_top` crops from the bottom only, so a
+    /// magazine cover keeps its masthead.
     fn picture(&mut self, ui: &Ui, rect: Rect, path: &str, contain: bool) {
+        self.picture_fit(ui, rect, path, contain, false);
+    }
+    fn picture_fit(&mut self, ui: &Ui, rect: Rect, path: &str, contain: bool, keep_top: bool) {
         ui.painter()
             .rect_filled(rect, 10, Color32::from_rgb(9, 13, 18));
         if let Some(t) = self.texture(ui.ctx(), path) {
@@ -236,7 +248,8 @@ impl Cabin {
                     Rect::from_min_max(pos2((1. - f) / 2., 0.), pos2((1. + f) / 2., 1.))
                 } else {
                     let f = aspect / target;
-                    Rect::from_min_max(pos2(0., (1. - f) / 2.), pos2(1., (1. + f) / 2.))
+                    let top = if keep_top { 0. } else { (1. - f) / 2. };
+                    Rect::from_min_max(pos2(0., top), pos2(1., top + f))
                 };
                 (rect, uv)
             };
@@ -294,6 +307,16 @@ impl Cabin {
             .focused_card
             .as_ref()
             .and_then(|id| self.nav_cards.iter().position(|x| x == id));
+        // Up from the first row has no card to go to: show the top of the page
+        // (the heading and featured item) instead of staying centred on the card.
+        if matches!(direction, navigation::Direction::Up)
+            && current.is_some_and(|i| i < self.nav_columns.max(1))
+        {
+            self.focus_ring = true;
+            self.scroll_focus = false;
+            self.controller_scroll = 1.0e6;
+            return;
+        }
         if let Some(next) =
             navigation::next_index(current, self.nav_cards.len(), self.nav_columns, direction)
         {
@@ -675,7 +698,8 @@ impl Cabin {
             );
         }
         let image_rect = Rect::from_min_size(rect.min + vec2(8., 8.), vec2(width - 16., 170.));
-        self.picture(ui, image_rect, &item.image, item.kind != "watch");
+        // Album and podcast art is shown whole; everything else fills the frame.
+        self.picture_fit(ui, image_rect, &item.image, item.kind == "listen", item.kind == "read");
         let badge = Rect::from_min_size(
             image_rect.left_bottom() + vec2(8., -34.),
             vec2((item.meta.len() as f32 * 9. + 20.).min(width - 40.), 28.),
@@ -801,7 +825,7 @@ impl Cabin {
             pos2(rect.min.x + width * 0.49, rect.min.y + 8.),
             rect.max - vec2(8., 8.),
         );
-        self.picture(ui, pic, &item.image, false);
+        self.picture_fit(ui, pic, &item.image, false, item.kind == "read");
         let left = Rect::from_min_max(
             rect.min + vec2(26., 25.),
             pos2(pic.min.x - 20., rect.max.y - 16.),
@@ -1126,6 +1150,16 @@ impl Cabin {
 impl eframe::App for Cabin {
     fn update(&mut self, ctx: &Context, _frame: &mut eframe::Frame) {
         self.frames += 1;
+        // One scripted move every quarter second, once the first cards are laid out.
+        if !self.scripted_moves.is_empty() && self.detail.is_none() && !self.nav_cards.is_empty() {
+            let due = 1500 + 250 * self.scripted_done as u128;
+            if self.started.elapsed().as_millis() > due {
+                let direction = self.scripted_moves.remove(0);
+                self.scripted_done += 1;
+                self.move_focus(direction);
+            }
+            ctx.request_repaint_after(Duration::from_millis(50));
+        }
         for _ in 0..4 {
             match self.image_results.try_recv() {
                 Ok((path, Some(image))) => {
@@ -1229,20 +1263,7 @@ impl eframe::App for Cabin {
                     (Key::ArrowDown, navigation::Direction::Down),
                 ] {
                     if ctx.input(|i| i.key_pressed(key)) {
-                        let current = self
-                            .focused_card
-                            .as_ref()
-                            .and_then(|id| self.nav_cards.iter().position(|x| x == id));
-                        if let Some(next) = navigation::next_index(
-                            current,
-                            self.nav_cards.len(),
-                            self.nav_columns,
-                            direction,
-                        ) {
-                            self.focused_card = Some(self.nav_cards[next].clone());
-                            self.focus_ring = true;
-                            self.scroll_focus = true;
-                        }
+                        self.move_focus(direction);
                     }
                 }
                 if ctx.input(|i| i.key_pressed(Key::Enter)) {
@@ -1512,9 +1533,26 @@ fn main() {
         }
         return;
     }
-    let section = arg_value(&args, "--section").unwrap_or("home".into());
+    let known = [
+        "home", "planner", "travel", "watch", "listen", "puzzles", "atari", "read", "favorites", "recent",
+    ];
+    let section = arg_value(&args, "--section")
+        .map(|s| if s == "flight" { "planner".to_string() } else { s })
+        .filter(|s| known.contains(&s.as_str()))
+        .unwrap_or("home".into());
     let detail = arg_value(&args, "--detail");
     let screenshot = arg_value(&args, "--screenshot").map(PathBuf::from);
+    let moves: Vec<navigation::Direction> = arg_value(&args, "--moves")
+        .unwrap_or_default()
+        .split(',')
+        .filter_map(|m| match m.trim() {
+            "left" => Some(navigation::Direction::Left),
+            "right" => Some(navigation::Direction::Right),
+            "up" => Some(navigation::Direction::Up),
+            "down" => Some(navigation::Direction::Down),
+            _ => None,
+        })
+        .collect();
     let options = eframe::NativeOptions {
         viewport: ViewportBuilder::default()
             .with_title("Cabin — your offline escape")
@@ -1534,7 +1572,7 @@ fn main() {
     if let Err(e) = eframe::run_native(
         "cabin",
         options,
-        Box::new(move |cc| Ok(Box::new(Cabin::new(cc, section, detail, screenshot)))),
+        Box::new(move |cc| Ok(Box::new(Cabin::new(cc, section, detail, screenshot, moves)))),
     ) {
         eprintln!("Could not open Cabin: {e}");
         std::process::exit(1);

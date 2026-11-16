@@ -1,0 +1,10 @@
+{
+  "note": "Starter audio for the Listen shelf. NASA podcasts are public domain; LibriVox recordings are public domain.",
+  "podcasts": [
+    {"title": "Houston We Have a Podcast", "feed": "https://www.nasa.gov/feeds/podcasts/houston-we-have-a-podcast", "episodes": 4},
+    {"title": "NASA's Curious Universe", "feed": "https://www.nasa.gov/feeds/podcasts/curious-universe", "episodes": 4}
+  ],
+  "audiobooks": [
+    {"title": "Sailing Alone Around the World", "author": "Joshua Slocum", "archive_id": "sailing_alone_around_librivox_1"}
+  ]
+}

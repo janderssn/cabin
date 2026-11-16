@@ -4,50 +4,50 @@
     {
       "id": "rep17G0tVLU",
       "title": "Patagonia: Into the Icefields",
-      "subtitle": "DW Documentary \u00b7 South America",
-      "description": "A journey with mountain guides and climate researchers into Patagonia\u2019s remote icefields, glaciers and Andean peaks."
+      "subtitle": "DW Documentary · South America",
+      "description": "A journey with mountain guides and climate researchers into Patagonia’s remote icefields, glaciers and Andean peaks."
     },
     {
       "id": "RztPLvHp1ak",
       "title": "Caribbean: The Little Pearls",
-      "subtitle": "World View \u00b7 Barbados & the Grenadines",
+      "subtitle": "World View · Barbados & the Grenadines",
       "description": "Coral beaches, volcanic slopes and tropical islands: Barbados, Saint Vincent, Bequia and the protected lagoons of the Tobago Cays. Includes island culture and sailing."
     },
     {
       "id": "bSvQ4ZYwJH8",
       "title": "Wild Indonesia: Land of Dragons",
-      "subtitle": "Free Documentary Nature \u00b7 Asia",
-      "description": "Central Indonesia\u2019s volcanic islands, monsoon landscapes and remarkable wildlife, from island habitats to the world of Komodo dragons."
+      "subtitle": "Free Documentary Nature · Asia",
+      "description": "Central Indonesia’s volcanic islands, monsoon landscapes and remarkable wildlife, from island habitats to the world of Komodo dragons."
     },
     {
       "id": "PgacpBq9fqs",
       "title": "Panama & Costa Rica: Tropical Paradise",
-      "subtitle": "Free Documentary Nature \u00b7 Central America",
+      "subtitle": "Free Documentary Nature · Central America",
       "description": "Rainforests, tropical wildlife and an underwater journey off Cocos Island, with reefs and schooling hammerhead sharks."
     },
     {
       "id": "wTujSh4fBXk",
       "title": "Alaska: The Last Frontier",
-      "subtitle": "Free Documentary Nature \u00b7 North America",
-      "description": "Southern Alaska\u2019s immense fjords, thousands of islands and coastal wilderness between Juneau and the Canadian border."
+      "subtitle": "Free Documentary Nature · North America",
+      "description": "Southern Alaska’s immense fjords, thousands of islands and coastal wilderness between Juneau and the Canadian border."
     }
   ],
   "magazines": [
     {
       "id": "caribbean-compass-january-2026",
       "title": "Caribbean Compass",
-      "subtitle": "January 2026 \u00b7 Sea, sailing & island life",
+      "subtitle": "January 2026 · Sea, sailing & island life",
       "url": "https://www.caribbeancompass.com/online/355-January-2026.pdf",
-      "description": "The Caribbean\u2019s look at sea and shore: sailing stories, island life and adventures on the water. Archive edition, January 2026."
+      "description": "The Caribbean’s look at sea and shore: sailing stories, island life and adventures on the water. Archive edition, January 2026."
     },
     {
       "id": "destination-virgin-islands-2020",
       "title": "Destination: Virgin Islands",
-      "subtitle": "2020 archive \u00b7 Beaches & Caribbean islands",
+      "subtitle": "2020 archive · Beaches & Caribbean islands",
       "url": "https://d1e1jt2fj4r8r.cloudfront.net/4e319841-ebdf-4f82-b6de-54b3e21b063c/Z0lDjA44k/Destination.pdf",
       "description": "A richly illustrated archive edition exploring the US and British Virgin Islands: beaches, island landscapes and life beside the Caribbean Sea. Read for inspiration; listings date from 2020."
     }
   ],
-  "travel_enabled": false,
-  "exclude": "Pacific war; European conflict coverage; Africa. Travel selection paused pending preference."
+  "travel_enabled": true,
+  "exclude": "Pacific war; European conflict coverage; Africa."
 }

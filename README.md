@@ -5,7 +5,7 @@
 A native Rust flight library with large text, touch-sized controls, background artwork loading, keyboard navigation, favorites and resume tracking. All browsing, artwork and playback work offline.
 
 <!-- counts:start -->
-82 catalogue entries: 40 native puzzles; 26 Atari games (13 boot-verified and visible by default); 6 active documentaries (6h 15m); 8 magazines; 2 illustrated books; and 0 local audio items.
+119 catalogue entries: 40 native puzzles; 26 Atari games (13 boot-verified and visible by default); 11 active documentaries (9h 52m); 10 magazines; 2 illustrated books; and 30 local audio items.
 <!-- counts:end -->
 
 The active history shelf includes two Mary Beard Roman Empire documentaries, the Vasa documentary, illustrated books on Roman daily life and Swedish history, NASA documentaries and the Vietnam series. Retro reading includes ST Action 32 and 44, ST Format 24 and 80, and Atari ST Review 11.
@@ -61,7 +61,9 @@ Installation is per-user. Runtime integrations are `mpv`, `evince`, `hatari`, `p
 
 `check --json` retains `items`, `errors`, `offline` and reports missing/non-executable players, partial downloads, zero-byte files, hash mismatches, files inspected and hashes verified. It exits nonzero for any failed check. The source manifests are checked against SHA-256.
 
-`list --json` exports the catalogue. `launch ID --dry-run` prints the executable and exact argument array. `--section read`, `--detail ITEM_ID`, `--windowed`, and `--screenshot PATH.png` support inspection.
+`list --json` exports the catalogue. `launch ID --dry-run` prints the executable and exact argument array. `--section read`, `--detail ITEM_ID`, `--windowed`, and `--screenshot PATH.png` support inspection; `--moves down,down,up` replays focus moves before the screenshot is taken.
+
+The Listen shelf shows whatever is in `~/music/flight/`. `scripts/fetch_audio.py` downloads the starter set listed in `data/audio-sources.json` (NASA podcasts and a LibriVox audiobook, all public domain); run `scripts/audio_library.py` afterwards. The Travel shelf is switched by `travel_enabled` in `data/travel-picks.json`.
 
 ## Content maintenance
 
