@@ -28,6 +28,12 @@ Open **Cabin** from the desktop launcher or run `~/.local/bin/cabin`.
 
 The home screen derives its hero and mixed shelves from the catalogue. **Continue watching** uses mpv's `watch_later` files, with progress on cards and detail pages. Positions shorter than five seconds or near the end are not suggested as unfinished.
 
+## Screenshots
+
+The desktop library and search results below are captured from the running application. Media titles and artwork are examples from a local collection; downloaded media, ROMs, personal catalogues and playback history are not included.
+
+![Cabin search with large text and a focused search field](docs/search.png)
+
 ## Controllers
 
 Cabin supports hot-plugged gamepads through [GilRs](https://docs.rs/gilrs/latest/gilrs/), including SDL/Steam controller mappings. No controller is required for touch or keyboard use.

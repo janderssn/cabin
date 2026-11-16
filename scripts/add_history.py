@@ -15,12 +15,16 @@ for ident,title,author,desc in [('40549','The Private Life of the Romans','Harol
  text=html.read_text();original=html.with_suffix('.original.html');shutil.copy2(html,original)
  css='''<style>html{background:#151b23;color:#e8edf4}body{max-width:46rem;margin:auto!important;padding:2rem!important;font:22px/1.75 Georgia,serif!important;background:#151b23!important;color:#e8edf4!important}p{line-height:1.75!important}a{color:#a5c5ff}img{max-width:100%;height:auto}h1,h2,h3{line-height:1.3}table{max-width:100%}pre{white-space:pre-wrap} .pg-boilerplate{font-size:17px}</style>'''
  html.write_text(text.replace('</head>',css+'</head>',1))
- candidates=re.findall(r'<img[^>]+src=[\"\']([^\"\']+)',text,re.I);image=''
- for relative in candidates:
+ candidates=re.findall(r'<img[^>]+src=[\"\']([^\"\']+)',text,re.I);image='';gallery=[]
+ # Hand-picked artwork: the first image in these books is a diagram or a plain binding.
+ chosen={'40549':['images/figure047.jpg','images/figure124.jpg','images/figure162.jpg'],'44624':['images/frontispiece.png','images/cover.jpg','images/titlepage.jpg']}.get(ident,[])
+ for number,relative in enumerate(chosen+candidates):
   source=html.parent/unescape(relative)
   if source.is_file():
-   target=assets/(ident+'-book'+source.suffix);shutil.copy2(source,target);image=str(target);break
- byid['book-'+ident]=dict(id='book-'+ident,title=title,subtitle=author,kind='read',tag='Roman history' if ident=='40549' else 'Swedish history',description=desc,path=str(html),image=image,gallery=[image] if image else [],source=f'https://www.gutenberg.org/ebooks/{ident}',meta='Illustrated book',bytes=sum(p.stat().st_size for p in dest.rglob('*') if p.is_file()),verified=True)
+   target=assets/(ident+'-book'+('' if not gallery else f'-{number}')+source.suffix);shutil.copy2(source,target);gallery.append(str(target))
+   if len(gallery)>=max(1,len(chosen)):break
+ image=gallery[0] if gallery else ''
+ byid['book-'+ident]=dict(id='book-'+ident,title=title,subtitle=author,kind='read',tag='Roman history' if ident=='40549' else 'Swedish history',description=desc,path=str(html),image=image,gallery=gallery,source=f'https://www.gutenberg.org/ebooks/{ident}',meta='Illustrated book',bytes=sum(p.stat().st_size for p in dest.rglob('*') if p.is_file()),verified=True)
  print('Added book',title,flush=True)
 for vid,title,sub,desc in [('Zu9EWhKzsVg','Rome: Origins of an Empire','Mary Beard · Empire Without Limit · Part 1','Mary Beard explores the origins, foundational myths and expansion of Rome.'),('RVUy_bm4V1k','Rome: Life Inside the Empire','Mary Beard · Empire Without Limit · Part 2','The physical world and everyday life of the Roman Empire, explored through its surviving evidence.'),('Phqk_vXby1w','Vasa: A Sunken Treasure','Swedish history · The Vasa Museum','A close look at the preserved Swedish warship with Fred Hocker, the Vasa Museum’s director of research.')]:
  path=next(p for p in vroot.glob('*.mkv') if '['+vid+']' in p.name);metadata=json.loads(path.with_suffix('.info.json').read_text());probe=json.loads(subprocess.check_output(['ffprobe','-v','error','-show_format','-show_streams','-of','json',str(path)]));duration=float(probe['format']['duration']);assert {'video','audio'}<={s['codec_type'] for s in probe['streams']}

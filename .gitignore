@@ -6,3 +6,14 @@
 /data/*.log
 
 /scripts/__pycache__/
+
+# Local credentials and private runtime data
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+cookies*.txt
+*credentials*.json
+/history.json
+/watch_later/
